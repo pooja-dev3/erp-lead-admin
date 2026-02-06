@@ -33,7 +33,7 @@ const Companies = () => {
     company_code: '',
     email: '',
     phone: '',
-    address: ''
+    status: 'active'
   });
 
   useEffect(() => {
@@ -72,7 +72,8 @@ const Companies = () => {
         name: newCompany.name,
         company_code: newCompany.company_code,
         contact_email: newCompany.email,
-        contact_phone: newCompany.phone
+        contact_phone: newCompany.phone,
+        status: newCompany.status
       };
       console.log('Creating company with data:', companyData);
       await companiesAPI.createCompany(companyData);
@@ -83,7 +84,7 @@ const Companies = () => {
         company_code: '',
         email: '',
         phone: '',
-        address: ''
+        status: 'active'
       });
       fetchCompanies();
     } catch (error) {
@@ -146,7 +147,7 @@ const Companies = () => {
       company_code: company.company_code,
       email: company.contact_email,
       phone: company.contact_phone,
-      address: company.address
+      status: company.status || 'active'
     });
     setShowEditForm(true);
   };
@@ -162,7 +163,7 @@ const Companies = () => {
         company_code: editingCompany.company_code,
         contact_email: editingCompany.email,
         contact_phone: editingCompany.phone,
-        address: editingCompany.address
+        status: editingCompany.status
       };
       
       await companiesAPI.updateCompany(editingCompany.id, updateData);
@@ -550,14 +551,16 @@ const Companies = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
-                  <textarea
-                    name="address"
-                    value={editingCompany?.address || ''}
-                    onChange={(e) => setEditingCompany({ ...editingCompany, address: e.target.value })}
-                    rows={3}
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    name="status"
+                    value={editingCompany?.status || 'active'}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, status: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  />
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
@@ -649,13 +652,15 @@ const Companies = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Address</label>
-                          <textarea
-                            value={newCompany.address}
-                            onChange={(e) => setNewCompany({ ...newCompany, address: e.target.value })}
-                            rows={3}
+                          <label className="block text-sm font-medium text-gray-700">Status</label>
+                          <select
+                            value={newCompany.status}
+                            onChange={(e) => setNewCompany({ ...newCompany, status: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                          />
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
                         </div>
                       </div>
                     </div>

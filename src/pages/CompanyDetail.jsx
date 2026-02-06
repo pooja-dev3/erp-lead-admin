@@ -74,7 +74,7 @@ const CompanyDetail = () => {
 
     contact_phone: '',
 
-    description: ''
+    status: 'active'
 
   });
 
@@ -246,7 +246,7 @@ const CompanyDetail = () => {
 
       contact_phone: company.contact_phone,
 
-      description: company.description || ''
+      status: company.status || 'active'
 
     });
 
@@ -773,16 +773,6 @@ const CompanyDetail = () => {
 
         </div>
 
-
-
-        <div className="mt-6">
-
-          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-
-          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{company.description || 'No description available'}</p>
-
-        </div>
-
       </div>
 
 
@@ -1247,21 +1237,25 @@ const CompanyDetail = () => {
 
                 <div>
 
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
 
-                  <textarea
+                  <select
 
-                    name="description"
+                    name="status"
 
-                    value={editForm.description}
+                    value={editForm.status}
 
                     onChange={handleEditChange}
 
-                    rows={3}
-
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
 
-                  />
+                  >
+
+                    <option value="active">Active</option>
+
+                    <option value="inactive">Inactive</option>
+
+                  </select>
 
                 </div>
 
