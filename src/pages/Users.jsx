@@ -74,9 +74,34 @@ const Users = () => {
     fetchCompanies();
   }, [searchTerm, filterRole, filterStatus, selectedCompanyId]);
 
+  // Email validation function
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   // Handle create user
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!newUser.full_name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+      showError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(newUser.email)) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate password strength (minimum 6 characters)
+    if (newUser.password.length < 6) {
+      showError('Password must be at least 6 characters long');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -417,14 +442,19 @@ const Users = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company ID</label>
-                        <input
-                          type="text"
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                        <select
                           value={newUser.company_id}
                           onChange={(e) => setNewUser({...newUser, company_id: e.target.value})}
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                          placeholder="Enter company ID (optional)"
-                        />
+                        >
+                          <option value="">Select a company</option>
+                          {companies.map((company) => (
+                            <option key={company.id} value={company.id}>
+                              {company.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>

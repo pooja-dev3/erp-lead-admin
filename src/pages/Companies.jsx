@@ -58,10 +58,24 @@ const Companies = () => {
     }
   };
 
+  const validatePhoneNumber = (phone) => {
+    if (!phone) return true; // Phone is optional, so empty is valid
+    // Basic phone number validation - allows digits, spaces, +, -, (, )
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    // Check if it has at least 10 digits
+    const digitCount = phone.replace(/\D/g, '').length;
+    return phoneRegex.test(phone) && digitCount >= 10;
+  };
+
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     if (!newCompany.name.trim() || !newCompany.company_code.trim() || !newCompany.email.trim()) {
       showError('Please fill in all required fields');
+      return;
+    }
+
+    if (!validatePhoneNumber(newCompany.phone)) {
+      showError('Please enter a valid phone number (at least 10 digits)');
       return;
     }
 

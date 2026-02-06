@@ -34,7 +34,6 @@ const Leads = () => {
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState([]);
@@ -69,7 +68,7 @@ const Leads = () => {
     if (isPlatformAdmin) {
       fetchCompanies();
     }
-  }, [currentPage, searchTerm, filterStatus, selectedCompanyId]);
+  }, [currentPage, searchTerm, selectedCompanyId]);
 
   const fetchLeadStats = async () => {
     try {
@@ -98,7 +97,6 @@ const Leads = () => {
       const params = {
         page: currentPage,
         search: searchTerm || undefined,
-        status: filterStatus !== 'all' ? filterStatus : undefined,
       };
       
       // Use selectedCompanyId for platform admins, otherwise use companyId
@@ -517,7 +515,7 @@ const Leads = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <div className="relative">
@@ -530,20 +528,6 @@ const Leads = () => {
                 className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="interested">Interested</option>
-              <option value="follow_up">Follow Up</option>
-              <option value="converted">Converted</option>
-              <option value="not_interested">Not Interested</option>
-            </select>
           </div>
           {isPlatformAdmin && (
             <div>
@@ -566,7 +550,6 @@ const Leads = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
-                setFilterStatus('all');
                 setCurrentPage(1);
               }}
               className="btn btn-secondary"
@@ -593,7 +576,7 @@ const Leads = () => {
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No leads found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'Get started by creating a new lead'}
+              {searchTerm ? 'Try adjusting your search' : 'Get started by creating a new lead'}
             </p>
           </div>
         ) : (
