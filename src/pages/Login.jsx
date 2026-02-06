@@ -39,7 +39,7 @@ const Login = () => {
 
     if (!email.trim()) {
       errors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.email = 'Please enter a valid email address';
     }
 
@@ -47,6 +47,8 @@ const Login = () => {
       errors.password = 'Password is required';
     } else if (password.length < 6) {
       errors.password = 'Password must be at least 6 characters long';
+    } else if (password.length > 50) {
+      errors.password = 'Password must be less than 50 characters long';
     }
 
     setValidationErrors(errors);

@@ -74,31 +74,50 @@ const Users = () => {
     fetchCompanies();
   }, [searchTerm, filterRole, filterStatus, selectedCompanyId]);
 
-  // Email validation function
+  // Validation functions
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return true; // Phone is optional, so empty is valid
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    const digitCount = phone.replace(/\D/g, '').length;
+    return phoneRegex.test(phone) && digitCount === 10;
+  };
+
+  const validateRequired = (value) => {
+    return value && value.trim().length > 0;
   };
 
   // Handle create user
   const handleCreateUser = async (e) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!newUser.full_name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
-      showError('Please fill in all required fields');
-      return;
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(newUser.full_name)) {
+      validationErrors.push('Full name is required');
     }
-
-    // Validate email format
+    
     if (!validateEmail(newUser.email)) {
-      showError('Please enter a valid email address');
-      return;
+      validationErrors.push('Please enter a valid email address');
     }
-
-    // Validate password strength (minimum 6 characters)
-    if (newUser.password.length < 6) {
-      showError('Password must be at least 6 characters long');
+    
+    if (newUser.phone && !validatePhone(newUser.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (!validateRequired(newUser.password)) {
+      validationErrors.push('Password is required');
+    } else if (newUser.password.length < 6) {
+      validationErrors.push('Password must be at least 6 characters long');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -128,6 +147,27 @@ const Users = () => {
   // Handle update user
   const handleUpdateUser = async (e) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(selectedUser.full_name)) {
+      validationErrors.push('Full name is required');
+    }
+    
+    if (!validateEmail(selectedUser.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (selectedUser.phone && !validatePhone(selectedUser.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

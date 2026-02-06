@@ -130,10 +130,61 @@ const Leads = () => {
     }
   };
 
+  // Validation functions
+  const validateEmail = (email) => {
+    if (!email) return false; // Email is now required
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return false; // Phone is now required
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    const digitCount = phone.replace(/\D/g, '').length;
+    return phoneRegex.test(phone) && digitCount === 10;
+  };
+
+  const validateName = (name) => {
+    return name && name.trim().length >= 2;
+  };
+
+  const validateFollowUpDate = (date) => {
+    if (!date) return false; // Follow-up date is now required
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    return !isNaN(selectedDate.getTime()) && selectedDate >= today;
+  };
+
   const handleCreateLead = async (e) => {
     e.preventDefault();
-    if (!newLead.full_name?.trim() || !newLead.email?.trim() || !newLead.phone?.trim()) {
-      showError('Please fill in all required fields');
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateName(newLead.full_name)) {
+      validationErrors.push('Full name must be at least 2 characters long');
+    }
+    
+    if (!validateEmail(newLead.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(newLead.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (!validateFollowUpDate(newLead.follow_up_date)) {
+      validationErrors.push('Follow-up date is required and must be today or in the future');
+    }
+    
+    // Platform admin specific validation
+    if (isPlatformAdmin && !createLeadCompanyId) {
+      validationErrors.push('Please select a company');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -250,8 +301,28 @@ const Leads = () => {
 
   const handleUpdateLeadSubmit = async (e) => {
     e.preventDefault();
-    if (!editingLead.visitor_name?.trim() || !editingLead.visitor_email?.trim()) {
-      showError('Please fill in all required fields');
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateName(editingLead.visitor_name)) {
+      validationErrors.push('Full name must be at least 2 characters long');
+    }
+    
+    if (!validateEmail(editingLead.visitor_email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(editingLead.visitor_phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (!validateFollowUpDate(editingLead.follow_up_date)) {
+      validationErrors.push('Follow-up date is required and must be today or in the future');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -800,7 +871,7 @@ const Leads = () => {
                     <h4 className="text-md font-medium text-gray-900 mb-4">Visitor Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Phone className="h-5 w-5 text-gray-400" />
@@ -832,7 +903,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Mail className="h-5 w-5 text-gray-400" />
@@ -843,6 +914,7 @@ const Leads = () => {
                             onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
                             placeholder="Email address"
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            required
                           />
                         </div>
                       </div>
@@ -935,7 +1007,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Date *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Calendar className="h-5 w-5 text-gray-400" />
@@ -1090,7 +1162,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Phone className="h-5 w-5 text-gray-400" />
@@ -1101,6 +1173,7 @@ const Leads = () => {
                             onChange={(e) => setEditingLead({ ...editingLead, visitor_phone: e.target.value })}
                             placeholder="Phone number"
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            required
                           />
                         </div>
                       </div>
@@ -1193,7 +1266,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Date *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Calendar className="h-5 w-5 text-gray-400" />

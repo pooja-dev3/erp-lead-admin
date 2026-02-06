@@ -50,6 +50,24 @@ const Visitors = () => {
     country: ''
   });
 
+  // Validation functions
+  const validateEmail = (email) => {
+    if (!email) return false; // Email is now required
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return false; // Phone is required
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    const digitCount = phone.replace(/\D/g, '').length;
+    return phoneRegex.test(phone) && digitCount === 10;
+  };
+
+  const validateRequired = (value) => {
+    return value && value.trim().length > 0;
+  };
+
   useEffect(() => {
     fetchVisitors();
     fetchVisitorStats();
@@ -116,8 +134,24 @@ const Visitors = () => {
 
   const handleCreateVisitor = async (e) => {
     e.preventDefault();
-    if (!newVisitor.full_name.trim() || !newVisitor.phone.trim()) {
-      showError('Please fill in all required fields');
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(newVisitor.full_name)) {
+      validationErrors.push('Full name is required');
+    }
+    
+    if (!validateEmail(newVisitor.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(newVisitor.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -150,6 +184,27 @@ const Visitors = () => {
 
   const handleUpdateVisitor = async (e) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(selectedVisitor.full_name)) {
+      validationErrors.push('Full name is required');
+    }
+    
+    if (!validateEmail(selectedVisitor.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(selectedVisitor.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       await visitorsAPI.updateVisitor(selectedVisitor.id, selectedVisitor);
@@ -560,9 +615,10 @@ const Visitors = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Email</label>
+                          <label className="block text-sm font-medium text-gray-700">Email *</label>
                           <input
                             type="email"
+                            required
                             value={newVisitor.email}
                             onChange={(e) => setNewVisitor({ ...newVisitor, email: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
@@ -675,9 +731,10 @@ const Visitors = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Email</label>
+                          <label className="block text-sm font-medium text-gray-700">Email *</label>
                           <input
                             type="email"
+                            required
                             value={selectedVisitor.email || ''}
                             onChange={(e) => setSelectedVisitor({ ...selectedVisitor, email: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"

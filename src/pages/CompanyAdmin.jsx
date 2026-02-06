@@ -42,6 +42,23 @@ const CompanyAdmin = () => {
     role: 'company_admin'
   });
 
+  // Validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return false; // Phone is now required
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    const digitCount = phone.replace(/\D/g, '').length;
+    return phoneRegex.test(phone) && digitCount === 10;
+  };
+
+  const validateRequired = (value) => {
+    return value && value.trim().length > 0;
+  };
+
   useEffect(() => {
     fetchCompanyAdmins();
     fetchCompanies();
@@ -124,8 +141,34 @@ const CompanyAdmin = () => {
 
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
-    if (!newAdmin.full_name.trim() || !newAdmin.email.trim() || !newAdmin.password.trim() || !newAdmin.company_id) {
-      showError('Please fill in all required fields');
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(newAdmin.full_name)) {
+      validationErrors.push('Full name is required');
+    }
+    
+    if (!validateEmail(newAdmin.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(newAdmin.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (!validateRequired(newAdmin.password)) {
+      validationErrors.push('Password is required');
+    } else if (newAdmin.password.length < 6) {
+      validationErrors.push('Password must be at least 6 characters long');
+    }
+    
+    if (!validateRequired(newAdmin.company_id)) {
+      validationErrors.push('Company selection is required');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -140,6 +183,7 @@ const CompanyAdmin = () => {
       const adminData = {
         full_name: newAdmin.full_name,
         email: newAdmin.email,
+        phone: newAdmin.phone,
         password: newAdmin.password,
         company_id: newAdmin.company_id
       };
@@ -229,6 +273,7 @@ const CompanyAdmin = () => {
       id: admin.id,
       full_name: admin.full_name,
       email: admin.email,
+      phone: admin.phone || '',
       password: '', // Don't pre-fill password for security
       company_id: admin.company_id
     });
@@ -237,8 +282,32 @@ const CompanyAdmin = () => {
 
   const handleUpdateAdminSubmit = async (e) => {
     e.preventDefault();
-    if (!editingAdmin.full_name.trim() || !editingAdmin.email.trim() || !editingAdmin.company_id) {
-      showError('Please fill in all required fields');
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(editingAdmin.full_name)) {
+      validationErrors.push('Full name is required');
+    }
+    
+    if (!validateEmail(editingAdmin.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!validatePhone(editingAdmin.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (!validateRequired(editingAdmin.company_id)) {
+      validationErrors.push('Company selection is required');
+    }
+    
+    if (editingAdmin.password && editingAdmin.password.length < 6) {
+      validationErrors.push('Password must be at least 6 characters long');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -253,6 +322,7 @@ const CompanyAdmin = () => {
       const adminData = {
         full_name: editingAdmin.full_name,
         email: editingAdmin.email,
+        phone: editingAdmin.phone,
         company_id: editingAdmin.company_id
       };
       
@@ -595,9 +665,10 @@ const CompanyAdmin = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone</label>
+                          <label className="block text-sm font-medium text-gray-700">Phone *</label>
                           <input
                             type="tel"
+                            required
                             value={newAdmin.phone}
                             onChange={(e) => setNewAdmin({ ...newAdmin, phone: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
@@ -697,9 +768,10 @@ const CompanyAdmin = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone</label>
+                          <label className="block text-sm font-medium text-gray-700">Phone *</label>
                           <input
                             type="tel"
+                            required
                             value={editingAdmin.phone}
                             onChange={(e) => setEditingAdmin({ ...editingAdmin, phone: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"

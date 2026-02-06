@@ -7,7 +7,6 @@ import {
   Users,
   Building2,
   Calendar,
-  DollarSign,
   Activity,
   Target
 } from 'lucide-react';
@@ -26,6 +25,14 @@ const CompanyAnalytics = () => {
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
   const [conversionRate, setConversionRate] = useState('0.0');
+  
+  // Growth trends data
+  const [monthlyGrowth, setMonthlyGrowth] = useState(0);
+  const [quarterlyGrowth, setQuarterlyGrowth] = useState(0);
+  const [yearlyGrowth, setYearlyGrowth] = useState(0);
+  
+  // Industry distribution data
+  const [industryData, setIndustryData] = useState({});
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -50,7 +57,11 @@ const CompanyAnalytics = () => {
         return sum + companyLeads;
       }, 0);
       
-      const totalUsersCount = companiesList.reduce((sum, company) => sum + (company.total_users || 0), 0);
+      // Calculate total users by summing up all company users with multiple fallback fields
+      const totalUsersCount = companiesList.reduce((sum, company) => {
+        const companyUsers = parseInt(company.total_users) || parseInt(company.users) || parseInt(company.user_count) || parseInt(company.employee_count) || 0;
+        return sum + companyUsers;
+      }, 0);
       const conversionRateCount = totalUsersCount > 0 ? ((totalLeadsCount / totalUsersCount) * 100).toFixed(1) : '0.0';
       
       // Set state for JSX access
@@ -61,8 +72,16 @@ const CompanyAnalytics = () => {
       setConversionRate(conversionRateCount);
       
       console.log('Total leads calculated:', totalLeadsCount);
+      console.log('Total users calculated:', totalUsersCount);
       console.log('Companies count:', totalCompaniesCount);
       console.log('Companies leads breakdown:', companiesList.map(c => ({ name: c.name, leads: c.total_leads || c.leads || c.lead_count || 0 })));
+      console.log('Companies users breakdown:', companiesList.map(c => ({ 
+        name: c.name, 
+        total_users: c.total_users,
+        users: c.users,
+        user_count: c.user_count,
+        employee_count: c.employee_count
+      })));
 
       // Create analytics metrics
       const analyticsData = [
@@ -107,7 +126,6 @@ const CompanyAnalytics = () => {
         .slice(0, 5)
         .map(company => ({
           company: company.name,
-          revenue: `₹${((company.total_leads || 0) * 50).toLocaleString()}`, // Estimate revenue in INR
           leads: company.total_leads || 0,
           growth: '+15%' // Placeholder - would need historical data
         }));
@@ -121,16 +139,61 @@ const CompanyAnalytics = () => {
       const monthlyDataGenerated = months.map((month, index) => {
         // Use real leads data distributed across months
         const monthLeads = Math.floor(totalLeadsCount / 12) + (index === currentMonth ? Math.floor(totalLeadsCount * 0.1) : 0);
-        // Estimate revenue based on leads (₹50 per lead as example)
-        const monthRevenue = monthLeads * 50;
         
         return {
           month,
-          revenue: monthRevenue,
           leads: monthLeads
         };
       });
       setMonthlyData(monthlyDataGenerated);
+
+      // Calculate real growth trends based on company creation dates
+      const currentDate = new Date();
+      const oneMonthAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, currentDate.getDate());
+      const threeMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 3, currentDate.getDate());
+      const oneYearAgo = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate());
+      
+      const companiesCreatedLastMonth = companiesList.filter(c => {
+        const createdAt = new Date(c.created_at);
+        return createdAt >= oneMonthAgo && createdAt <= currentDate;
+      }).length;
+      
+      const companiesCreatedLastQuarter = companiesList.filter(c => {
+        const createdAt = new Date(c.created_at);
+        return createdAt >= threeMonthsAgo && createdAt <= currentDate;
+      }).length;
+      
+      const companiesCreatedLastYear = companiesList.filter(c => {
+        const createdAt = new Date(c.created_at);
+        return createdAt >= oneYearAgo && createdAt <= currentDate;
+      }).length;
+      
+      // Calculate growth percentages
+      const monthlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastMonth / totalCompaniesCount) * 100).toFixed(1) : 0;
+      const quarterlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastQuarter / totalCompaniesCount) * 100).toFixed(1) : 0;
+      const yearlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastYear / totalCompaniesCount) * 100).toFixed(1) : 0;
+      
+      setMonthlyGrowth(monthlyGrowthRate);
+      setQuarterlyGrowth(quarterlyGrowthRate);
+      setYearlyGrowth(yearlyGrowthRate);
+      
+      // Calculate real industry distribution from company data
+      const industryCounts = {};
+      companiesList.forEach(company => {
+        const industry = company.industry || company.sector || company.category || 'Others';
+        industryCounts[industry] = (industryCounts[industry] || 0) + 1;
+      });
+      
+      // Convert to percentages
+      const industryPercentages = {};
+      Object.keys(industryCounts).forEach(industry => {
+        industryPercentages[industry] = totalCompaniesCount > 0 ? ((industryCounts[industry] / totalCompaniesCount) * 100).toFixed(1) : 0;
+      });
+      
+      setIndustryData(industryPercentages);
+      
+      console.log('Industry distribution:', industryPercentages);
+      console.log('Growth trends:', { monthlyGrowthRate, quarterlyGrowthRate, yearlyGrowthRate });
 
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
@@ -242,36 +305,20 @@ const CompanyAnalytics = () => {
             <div className="flex h-full items-end space-x-2">
               {monthlyData.map((data, index) => (
                 <div key={data.month} className="flex-1 flex flex-col items-center">
-                  <div className="w-full flex flex-col space-y-1">
-                    {/* Revenue Bar */}
-                    <div 
-                      className="bg-blue-500 rounded-t-sm transition-all duration-300 hover:bg-blue-600"
-                      style={{ 
-                        height: `${Math.max((data.revenue / Math.max(...monthlyData.map(d => d.revenue))) * 120, 5)}px`,
-                        minHeight: '5px'
-                      }}
-                      title={`Revenue: ₹${data.revenue.toLocaleString()}`}
-                    ></div>
-                    {/* Leads Bar */}
-                    <div 
-                      className="bg-green-500 rounded-b-sm transition-all duration-300 hover:bg-green-600"
-                      style={{ 
-                        height: `${Math.max((data.leads / Math.max(...monthlyData.map(d => d.leads))) * 120, 5)}px`,
-                        minHeight: '5px'
-                      }}
-                      title={`Leads: ${data.leads}`}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-gray-600 mt-1 text-center">{data.month}</span>
+                  <div 
+                    className="bg-green-500 rounded-sm transition-all duration-300 hover:bg-green-600 w-full"
+                    style={{ 
+                      height: `${Math.max((data.leads / Math.max(...monthlyData.map(d => d.leads))) * 240, 10)}px`,
+                      minHeight: '10px'
+                    }}
+                    title={`Leads: ${data.leads}`}
+                  ></div>
+                  <span className="text-xs text-gray-600 mt-2 text-center">{data.month}</span>
                 </div>
               ))}
             </div>
           </div>
           <div className="mt-4 flex items-center justify-center space-x-6 text-sm">
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-blue-500 rounded-sm mr-2"></div>
-              <span className="text-gray-600">Revenue</span>
-            </div>
             <div className="flex items-center">
               <div className="w-3 h-3 bg-green-500 rounded-sm mr-2"></div>
               <span className="text-gray-600">Leads</span>
@@ -281,10 +328,7 @@ const CompanyAnalytics = () => {
             {monthlyData.slice(0, 6).map((data) => (
               <div key={data.month} className="flex items-center justify-between text-sm">
                 <span className="font-medium text-gray-900">{data.month}</span>
-                <div className="flex space-x-4">
-                  <span className="text-gray-500">₹{data.revenue.toLocaleString()}</span>
-                  <span className="text-gray-500">{data.leads} leads</span>
-                </div>
+                <span className="text-gray-500">{data.leads} leads</span>
               </div>
             ))}
           </div>
@@ -301,9 +345,6 @@ const CompanyAnalytics = () => {
                     Company
                   </th>
                   <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                    Revenue
-                  </th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     Leads
                   </th>
                   <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
@@ -316,9 +357,6 @@ const CompanyAnalytics = () => {
                   <tr key={index}>
                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">
                       {company.company}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {company.revenue}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                       {company.leads}
@@ -344,18 +382,18 @@ const CompanyAnalytics = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Monthly Growth</span>
-              <span className="text-sm font-medium text-green-600">+{totalCompanies > 0 ? Math.floor((activeCompanies / totalCompanies) * 100) : 0}%</span>
+              <span className="text-sm font-medium text-green-600">+{monthlyGrowth}%</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Quarterly Growth</span>
-              <span className="text-sm font-medium text-green-600">+{totalCompanies > 0 ? Math.floor((activeCompanies / totalCompanies) * 80) : 0}%</span>
+              <span className="text-sm font-medium text-green-600">+{quarterlyGrowth}%</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Yearly Growth</span>
-              <span className="text-sm font-medium text-green-600">+{totalCompanies > 0 ? Math.floor((activeCompanies / totalCompanies) * 120) : 0}%</span>
+              <span className="text-sm font-medium text-green-600">+{yearlyGrowth}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              <div className="bg-green-600 h-2 rounded-full" style={{width: `${totalCompanies > 0 ? (activeCompanies / totalCompanies) * 100 : 0}%`}}></div>
+              <div className="bg-green-600 h-2 rounded-full" style={{width: `${monthlyGrowth}%`}}></div>
             </div>
           </div>
         </div>
@@ -364,22 +402,16 @@ const CompanyAnalytics = () => {
         <div className="card">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Industry Distribution</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Technology</span>
-              <span className="text-sm font-medium">{totalCompanies > 0 ? Math.floor((totalCompanies * 0.4) / totalCompanies * 100) : 0}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Healthcare</span>
-              <span className="text-sm font-medium">{totalCompanies > 0 ? Math.floor((totalCompanies * 0.25) / totalCompanies * 100) : 0}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Finance</span>
-              <span className="text-sm font-medium">{totalCompanies > 0 ? Math.floor((totalCompanies * 0.20) / totalCompanies * 100) : 0}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Others</span>
-              <span className="text-sm font-medium">{totalCompanies > 0 ? Math.floor((totalCompanies * 0.15) / totalCompanies * 100) : 0}%</span>
-            </div>
+            {Object.keys(industryData).length > 0 ? (
+              Object.entries(industryData).map(([industry, percentage]) => (
+                <div key={industry} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{industry}</span>
+                  <span className="text-sm font-medium">{percentage}%</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500">No industry data available</div>
+            )}
           </div>
         </div>
 

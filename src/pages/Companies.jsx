@@ -58,24 +58,49 @@ const Companies = () => {
     }
   };
 
+  // Validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const validatePhoneNumber = (phone) => {
     if (!phone) return true; // Phone is optional, so empty is valid
     // Basic phone number validation - allows digits, spaces, +, -, (, )
     const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-    // Check if it has at least 10 digits
+    // Check if it has exactly 10 digits
     const digitCount = phone.replace(/\D/g, '').length;
-    return phoneRegex.test(phone) && digitCount >= 10;
+    return phoneRegex.test(phone) && digitCount === 10;
+  };
+
+  const validateRequired = (value) => {
+    return value && value.trim().length > 0;
   };
 
   const handleCreateCompany = async (e) => {
     e.preventDefault();
-    if (!newCompany.name.trim() || !newCompany.company_code.trim() || !newCompany.email.trim()) {
-      showError('Please fill in all required fields');
-      return;
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(newCompany.name)) {
+      validationErrors.push('Company name is required');
     }
-
-    if (!validatePhoneNumber(newCompany.phone)) {
-      showError('Please enter a valid phone number (at least 10 digits)');
+    
+    if (!validateRequired(newCompany.company_code)) {
+      validationErrors.push('Company code is required');
+    }
+    
+    if (!validateEmail(newCompany.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (newCompany.phone && !validatePhoneNumber(newCompany.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
       return;
     }
 
@@ -168,6 +193,31 @@ const Companies = () => {
 
   const handleUpdateCompany = async (e) => {
     e.preventDefault();
+    
+    // Validate all required fields
+    const validationErrors = [];
+    
+    if (!validateRequired(editingCompany.name)) {
+      validationErrors.push('Company name is required');
+    }
+    
+    if (!validateRequired(editingCompany.company_code)) {
+      validationErrors.push('Company code is required');
+    }
+    
+    if (!validateEmail(editingCompany.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (editingCompany.phone && !validatePhoneNumber(editingCompany.phone)) {
+      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+    }
+    
+    if (validationErrors.length > 0) {
+      showError(validationErrors.join('; '));
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
