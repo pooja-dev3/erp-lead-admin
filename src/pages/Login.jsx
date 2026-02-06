@@ -114,7 +114,7 @@ const Login = () => {
                     setValidationErrors(prev => ({ ...prev, email: '' }));
                   }
                 }}
-                className={`block w-full rounded-lg border bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm transition-colors duration-200 ${
+                className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${
                   validationErrors.email
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
@@ -150,7 +150,7 @@ const Login = () => {
                       setValidationErrors(prev => ({ ...prev, password: '' }));
                     }
                   }}
-                  className={`block w-full rounded-lg border bg-white pr-12 pl-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm transition-colors duration-200 ${
+                  className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${
                     validationErrors.password
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'

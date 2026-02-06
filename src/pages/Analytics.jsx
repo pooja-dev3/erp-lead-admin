@@ -187,7 +187,7 @@ const Analytics = () => {
           <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
           <p className="text-gray-600">Monitor your company's performance and metrics</p>
         </div>
-        <div className="flex items-center space-x-4">
+        {/* <div className="flex items-center space-x-4">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
@@ -198,7 +198,7 @@ const Analytics = () => {
             <option value="90days">Last 90 days</option>
             <option value="1year">Last year</option>
           </select>
-        </div>
+        </div> */}
       </div>
 
       {/* Overview Stats */}

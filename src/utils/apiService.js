@@ -67,82 +67,153 @@ export const dashboardAPI = {
 // Users Management APIs
 export const usersAPI = {
   getUsers: async (params = {}) => {
+    // If role parameter is 'employee', use the specific endpoint
+    if (params.role === 'employee') {
+      // Remove role from params since it's in the URL
+      const { role, ...otherParams } = params;
+      const response = await api.get('/admin/users?role=employee', { params: otherParams });
+      return response.data;
+    }
+    // For other cases, use the general endpoint
     const response = await api.get('/admin/users', { params });
     return response.data;
   },
   createUser: async (userData) => {
     console.log('Creating user with data:', userData);
     try {
-      // Try the admin users endpoint first
-      const response = await api.post('/admin/users', userData);
+      // Use the working endpoint with correct field names based on backend error messages
+      // Backend expects: Full name, email, role, password, and phone
+      const requestData = {
+        full_name: userData.full_name,
+        email: userData.email,
+        phone: userData.phone,
+        role: userData.role || 'employee',
+        password: userData.password,
+        company_id: userData.company_id
+      };
+      
+      console.log('Sending request data:', requestData);
+      const response = await api.post('/admin/users', requestData);
       return response.data;
     } catch (error) {
-      console.log('Admin users endpoint failed, trying company-users endpoint:', error.response?.status);
-      // If admin endpoint fails, try company-specific endpoints
+      console.log('Create user failed:', error.response?.status);
+      console.log('Error response:', error.response?.data);
+      
+      // Handle specific error cases
+      if (error.response?.data?.error === 'Email already exists') {
+        throw new Error('An account with this email address already exists');
+      }
+      
+      // For other errors, try alternative approaches
       if (error.response?.status === 400 || error.response?.status === 403) {
+        // Try with company_id as query parameter
         try {
-          const response = await api.post('/admin/company-users', userData);
+          const { company_id, ...dataWithoutCompany } = userData;
+          const response = await api.post(`/admin/users?company_id=${company_id}`, dataWithoutCompany);
           return response.data;
-        } catch (companyError) {
-          console.log('Company-users endpoint failed, trying users endpoint:', companyError.response?.status);
-          // Try the general users endpoint
-          try {
-            const response = await api.post('/users', userData);
-            return response.data;
-          } catch (usersError) {
-            console.log('Users endpoint failed, trying company-employees endpoint:', usersError.response?.status);
-            // Try company-employees endpoint
-            try {
-              const response = await api.post('/admin/company-employees', userData);
-              return response.data;
-            } catch (employeesError) {
-              console.log('All endpoints failed, last error:', employeesError.response?.status);
-              throw employeesError;
-            }
-          }
+        } catch (queryError) {
+          console.log('Query parameter approach failed:', queryError.response?.data);
+          throw queryError;
         }
       }
+      
       throw error;
     }
   },
   updateUser: async (id, userData) => {
     console.log('Updating user with data:', userData);
     try {
-      // Try the admin users endpoint first
-      const response = await api.put(`/admin/users/${id}`, userData);
+      // For company admins, exclude is_active field since they can't modify it
+      const { is_active, ...userDataWithoutStatus } = userData;
+      const response = await api.put(`/admin/users/${id}`, userDataWithoutStatus);
       return response.data;
     } catch (error) {
       console.log('Admin users update endpoint failed, trying company-users endpoint:', error.response?.status);
-      // If admin endpoint fails, try company-specific endpoints
-      if (error.response?.status === 400 || error.response?.status === 403) {
+      console.log('Error response:', error.response?.data);
+      
+      // If primary endpoint fails, try company-specific endpoints
+      try {
+        const { is_active, ...userDataWithoutStatus } = userData;
+        const response = await api.put(`/admin/company-users/${id}`, userDataWithoutStatus);
+        return response.data;
+      } catch (companyError) {
+        console.log('Company-users update endpoint failed, trying users endpoint:', companyError.response?.status);
+        // Try the general users endpoint
         try {
-          const response = await api.put(`/admin/company-users/${id}`, userData);
+          const { is_active, ...userDataWithoutStatus } = userData;
+          const response = await api.put(`/users/${id}`, userDataWithoutStatus);
           return response.data;
-        } catch (companyError) {
-          console.log('Company-users update endpoint failed, trying users endpoint:', companyError.response?.status);
-          // Try the general users endpoint
+        } catch (usersError) {
+          console.log('Users update endpoint failed, trying company-employees endpoint:', usersError.response?.status);
+          // Try company-employees endpoint
           try {
-            const response = await api.put(`/users/${id}`, userData);
+            const { is_active, ...userDataWithoutStatus } = userData;
+            const response = await api.put(`/admin/company-employees/${id}`, userDataWithoutStatus);
             return response.data;
-          } catch (usersError) {
-            console.log('Users update endpoint failed, trying company-employees endpoint:', usersError.response?.status);
-            // Try company-employees endpoint
-            try {
-              const response = await api.put(`/admin/company-employees/${id}`, userData);
-              return response.data;
-            } catch (employeesError) {
-              console.log('All update endpoints failed, last error:', employeesError.response?.status);
-              throw employeesError;
-            }
+          } catch (employeesError) {
+            console.log('All update endpoints failed, last error:', employeesError.response?.status);
+            throw employeesError;
           }
         }
       }
-      throw error;
     }
   },
   deactivateUser: async (id) => {
-    const response = await api.put(`/admin/users/${id}/deactivate`);
-    return response.data;
+    console.log('Deactivating user:', id);
+    try {
+      // Use the specific working deactivate endpoint
+      const response = await api.put(`/admin/users/${id}/deactivate`);
+      return response.data;
+    } catch (error) {
+      console.log('Deactivate endpoint failed:', error.response?.status);
+      console.log('Error response:', error.response?.data);
+      
+      // If the specific endpoint fails, provide clear error message
+      if (error.response?.status === 404) {
+        throw new Error('Deactivate functionality is not available. Please contact your system administrator to enable employee deactivation.');
+      } else if (error.response?.status === 403) {
+        throw new Error('You do not have permission to deactivate employees. Please contact your system administrator.');
+      } else if (error.response?.data?.error === 'Validation failed') {
+        throw new Error('Unable to deactivate employee due to validation restrictions. Please contact your system administrator.');
+      } else {
+        throw new Error('Failed to deactivate employee. Please try again or contact your system administrator.');
+      }
+    }
+  },
+  deleteUser: async (id) => {
+    console.log('Deleting user:', id);
+    try {
+      // Use the correct DELETE endpoint first
+      const response = await api.delete(`/admin/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.log('DELETE endpoint failed, trying soft delete with PUT:', error.response?.status);
+      console.log('Error response:', error.response?.data);
+      
+      // If DELETE doesn't work, try soft delete using PUT endpoint
+      // For company admins, exclude is_active field and try alternative approaches
+      try {
+        // Try soft delete without is_active field first
+        const response = await api.put(`/admin/users/${id}`, { 
+          status: 'inactive'  // Try status field instead
+        });
+        return response.data;
+      } catch (error2) {
+        console.log('Status field soft delete failed:', error2.response?.status);
+        console.log('Error2 response:', error2.response?.data);
+        
+        // Check if the error is about is_active or status field not being allowed
+        if (error2.response?.data?.details?.some(detail => 
+          (detail.field === 'is_active' || detail.field === 'status') && 
+          detail.message.includes('not allowed')
+        )) {
+          console.log('Company admins cannot modify status fields');
+          throw new Error('Company admins do not have permission to delete employees. Employee management modifications require platform admin access.');
+        }
+        
+        throw error2;
+      }
+    }
   },
 };
 

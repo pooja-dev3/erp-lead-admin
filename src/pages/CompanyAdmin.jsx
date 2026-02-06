@@ -335,7 +335,7 @@ const CompanyAdmin = () => {
         <div className="mt-4 flex md:ml-4 md:mt-0">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Company Admin

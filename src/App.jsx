@@ -17,6 +17,7 @@ import Leads from './pages/Leads';
 import CompanyAdmin from './pages/CompanyAdmin';
 import Settings from './pages/Settings';
 import Employees from './pages/Employees';
+import Users from './pages/Users';
 import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
 import './index.css';
@@ -112,6 +113,11 @@ function AppRoutes() {
         <Route path="companies" element={
           <ProtectedRoute requiredRole="platform_admin">
             <Companies />
+          </ProtectedRoute>
+        } />
+        <Route path="users" element={
+          <ProtectedRoute requiredRole="platform_admin">
+            <Users />
           </ProtectedRoute>
         } />
         <Route path="companies/:id" element={

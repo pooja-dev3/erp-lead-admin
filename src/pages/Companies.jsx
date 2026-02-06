@@ -6,10 +6,13 @@ import {
   Search,
   Plus,
   Eye,
+  Edit,
+  Ban,
   Building2,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 
 const Companies = () => {
@@ -22,6 +25,8 @@ const Companies = () => {
   const [companies, setCompanies] = useState([]);
   const [pagination, setPagination] = useState({});
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingCompany, setEditingCompany] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newCompany, setNewCompany] = useState({
     name: '',
@@ -126,22 +131,118 @@ const Companies = () => {
     }
   };
 
-  const handleUpdateCompany = async (id, companyData) => {
-    try {
-      await companiesAPI.updateCompany(id, companyData);
-      showSuccess('Company updated successfully');
-      fetchCompanies();
-    } catch (error) {
-      showError('Failed to update company');
-    }
-  };
-
   const getStatusColor = (status) => {
     return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
 
   const handleViewCompany = (company) => {
     navigate(`/companies/${company.id}`);
+  };
+
+  const handleEditCompany = (company) => {
+    setEditingCompany({
+      id: company.id,
+      name: company.name,
+      company_code: company.company_code,
+      email: company.contact_email,
+      phone: company.contact_phone,
+      address: company.address
+    });
+    setShowEditForm(true);
+  };
+
+  const handleUpdateCompany = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Map form data to API field names
+      const updateData = {
+        name: editingCompany.name,
+        company_code: editingCompany.company_code,
+        contact_email: editingCompany.email,
+        contact_phone: editingCompany.phone,
+        address: editingCompany.address
+      };
+      
+      await companiesAPI.updateCompany(editingCompany.id, updateData);
+      showSuccess('Company updated successfully');
+      setShowEditForm(false);
+      setEditingCompany(null);
+      fetchCompanies();
+    } catch (error) {
+      console.error('Error updating company:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update company';
+      showError(`Failed to update company: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDisable = async (company) => {
+    const normalizedStatus = String(company?.status).toLowerCase().trim();
+    const action = normalizedStatus === 'active' || normalizedStatus === 'true' ? 'deactivate' : 'enable';
+    
+    if (confirm(`Are you sure you want to ${action} ${company?.name}?`)) {
+      setIsSubmitting(true);
+      
+      try {
+        if (normalizedStatus === 'active' || normalizedStatus === 'true') {
+          // Try the dedicated deactivate endpoint first
+          try {
+            console.log('Attempting to deactivate company:', company.id);
+            const response = await companiesAPI.deactivateCompany(company.id);
+            console.log('Deactivate response:', response);
+            showSuccess('Company deactivated successfully');
+            fetchCompanies();
+          } catch (deactivateError) {
+            console.error('Deactivate endpoint failed:', deactivateError);
+            console.error('Deactivate error response:', deactivateError.response?.data);
+            
+            // Use the same approach as edit - send all company data with updated status
+            try {
+              const updateData = {
+                name: company.name,
+                company_code: company.company_code,
+                contact_email: company.contact_email,
+                contact_phone: company.contact_phone,
+                address: company.address,
+                status: 'inactive'
+              };
+              console.log('Sending update data:', updateData);
+              const updateResponse = await companiesAPI.updateCompany(company.id, updateData);
+              console.log('Full update response:', updateResponse);
+              showSuccess('Company deactivated successfully');
+              fetchCompanies();
+            } catch (fullError) {
+              console.error('Full update failed:', fullError);
+              console.error('Full update error response:', fullError.response?.data);
+              showError('Failed to deactivate company');
+            }
+          }
+        } else {
+          // Enable the company
+          const updateData = {
+            name: company.name,
+            company_code: company.company_code,
+            contact_email: company.contact_email,
+            contact_phone: company.contact_phone,
+            address: company.address,
+            status: 'active'
+          };
+          console.log('Sending enable data:', updateData);
+          const updateResponse = await companiesAPI.updateCompany(company.id, updateData);
+          console.log('Enable response:', updateResponse);
+          showSuccess('Company enabled successfully');
+          fetchCompanies();
+        }
+      } catch (error) {
+        console.error('Error toggling company status:', error);
+        showError('Failed to update company status');
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
   };
 
   const handlePageChange = (page) => {
@@ -163,7 +264,7 @@ const Companies = () => {
         <div className="mt-4 flex md:ml-4 md:mt-0">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Company
@@ -291,12 +392,34 @@ const Companies = () => {
                         {new Date(company.created_at).toLocaleDateString('en-GB')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleViewCompany(company)}
-                          className="text-primary-600 hover:text-primary-900 mr-3"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewCompany(company)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditCompany(company)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDisable(company)}
+                            className={`${
+                              String(company?.status).toLowerCase().trim() === 'active' || String(company?.status).toLowerCase().trim() === 'true' 
+                                ? 'text-red-600 hover:text-red-700' 
+                                : 'text-green-600 hover:text-green-700'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            title={String(company?.status).toLowerCase().trim() === 'active' || String(company?.status).toLowerCase().trim() === 'true' ? 'Deactivate' : 'Enable'}
+                            disabled={isSubmitting}
+                          >
+                            <Ban className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -362,6 +485,112 @@ const Companies = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Company Modal */}
+      {showEditForm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit Company</h3>
+                <button
+                  onClick={() => setShowEditForm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateCompany} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={editingCompany?.name || ''}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, name: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Company Code</label>
+                  <input
+                    type="text"
+                    name="company_code"
+                    value={editingCompany?.company_code || ''}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, company_code: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contact Email</label>
+                  <input
+                    type="email"
+                    name="contact_email"
+                    value={editingCompany?.email || ''}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, email: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contact Phone</label>
+                  <input
+                    type="tel"
+                    name="contact_phone"
+                    value={editingCompany?.phone || ''}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, phone: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <textarea
+                    name="address"
+                    value={editingCompany?.address || ''}
+                    onChange={(e) => setEditingCompany({ ...editingCompany, address: e.target.value })}
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditForm(false)}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                      
+                        Update Company
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Company Modal */}
       {showCreateForm && (

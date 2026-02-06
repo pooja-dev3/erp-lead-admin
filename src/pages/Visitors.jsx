@@ -214,7 +214,7 @@ const Visitors = () => {
         <div className="mt-4 flex md:ml-4 md:mt-0">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center"
           >
             <Plus className="h-5 w-5 mr-2" />
             Check In Visitor
@@ -343,8 +343,8 @@ const Visitors = () => {
               className="w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All Status</option>
-              <option value="checked_in">Checked In</option>
-              <option value="checked_out">Checked Out</option>
+              <option value="checked_in">Active</option>
+              <option value="checked_out">Inactive</option>
             </select>
           </div>
           <div className="flex items-end">

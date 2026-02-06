@@ -33,6 +33,13 @@ const Sidebar = ({ isMobile = false, onClose = null }) => {
       roles: ['platform_admin']
     },
     {
+      name: 'Users',
+      href: '/users',
+      icon: Users,
+      current: false,
+      roles: ['platform_admin']
+    },
+    {
       name: 'Leads',
       href: '/leads',
       icon: Users,
@@ -74,20 +81,20 @@ const Sidebar = ({ isMobile = false, onClose = null }) => {
       current: false,
       roles: ['platform_admin']
     },
-    {
-      name: 'Audit Logs',
-      href: '/audit-logs',
-      icon: FileText,
-      current: false,
-      roles: ['platform_admin']
-    },
-    {
-      name: 'Settings',
-      href: '/settings',
-      icon: Settings,
-      current: false,
-      roles: ['platform_admin', 'company_admin']
-    }
+    // {
+    //   name: 'Audit Logs',
+    //   href: '/audit-logs',
+    //   icon: FileText,
+    //   current: false,
+    //   roles: ['platform_admin']
+    // },
+    // {
+    //   name: 'Settings',
+    //   href: '/settings',
+    //   icon: Settings,
+    //   current: false,
+    //   roles: ['platform_admin', 'company_admin']
+    // }
   ];
 
   const filteredNavigation = navigation.filter(item => {

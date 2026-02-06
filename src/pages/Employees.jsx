@@ -26,10 +26,11 @@ import {
 
 const Employees = () => {
   const navigate = useNavigate();
-  const { user, companyId } = useAuth();
+  const { user, companyId, isCompanyAdmin } = useAuth();
   const { showSuccess, showError } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
+  // For company admins, default to employee role only
+  const [filterRole, setFilterRole] = useState(isCompanyAdmin ? 'employee' : 'all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -43,8 +44,7 @@ const Employees = () => {
     full_name: '',
     email: '',
     phone: '',
-    role: 'employee',
-    status: 'active'
+    password: ''
   });
 
   useEffect(() => {
@@ -97,9 +97,8 @@ const Employees = () => {
         full_name: newEmployee.full_name,
         email: newEmployee.email,
         phone: newEmployee.phone,
-        role: newEmployee.role,
-        // Map status to is_active for backend compatibility
-        is_active: newEmployee.status === 'active',
+        password: newEmployee.password,
+        role: 'employee', // Always employee for company admin
         company_id: companyId
       };
       
@@ -115,8 +114,7 @@ const Employees = () => {
         full_name: '',
         email: '',
         phone: '',
-        role: 'employee',
-        status: 'active'
+        password: ''
       });
       fetchEmployees();
     } catch (error) {
@@ -165,14 +163,21 @@ const Employees = () => {
       fetchEmployees();
     } catch (error) {
       console.error('Error updating employee:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error headers:', error.response?.headers);
+      console.log('Error status:', error.response?.status);
+      console.log('Error data:', error.response?.data);
       
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          'Failed to update employee';
-      showError(errorMessage);
+      // Handle specific permission errors
+      if (error.response?.data?.error === 'Insufficient permissions') {
+        showError('You do not have permission to update employees. Please contact your system administrator.');
+      } else if (error.response?.data?.error === 'Validation failed') {
+        showError('Unable to update employee due to validation errors. Please check all fields and try again.');
+      } else if (error.response?.data?.error === 'Route not found') {
+        showError('Update functionality is not available for company admins. Employee management modifications require platform admin access.');
+      } else if (error.response?.status === 404) {
+        showError('Employee update endpoints are not available. Please contact your system administrator for employee modifications.');
+      } else {
+        showError('Failed to update employee');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +191,38 @@ const Employees = () => {
         fetchEmployees();
       } catch (error) {
         console.error('Error deactivating employee:', error);
-        showError('Failed to deactivate employee');
+        
+        // Handle specific permission errors
+        if (error.response?.data?.error === 'Insufficient permissions') {
+          showError('You do not have permission to deactivate employees. Please contact your system administrator.');
+        } else if (error.response?.data?.error === 'Validation failed') {
+          showError('Unable to deactivate employee due to validation errors. Please try again.');
+        } else {
+          showError('Failed to deactivate employee');
+        }
+      }
+    }
+  };
+
+  const handleDeleteEmployee = async (employee) => {
+    if (confirm(`Are you sure you want to deactivate ${employee.full_name}? This will deactivate their account and they will no longer be able to access the system.`)) {
+      try {
+        await usersAPI.deactivateUser(employee.id);
+        showSuccess('Employee deactivated successfully');
+        fetchEmployees();
+      } catch (error) {
+        console.error('Error deactivating employee:', error);
+        
+        // Handle specific permission errors
+        if (error.response?.data?.error === 'Insufficient permissions') {
+          showError('You do not have permission to deactivate employees. Please contact your system administrator.');
+        } else if (error.response?.data?.error === 'Validation failed') {
+          showError('Unable to deactivate employee due to validation errors. Please try again.');
+        } else if (error.response?.data?.error === 'Route not found') {
+          showError('Deactivate functionality is not available. Please contact your system administrator for employee deactivation.');
+        } else {
+          showError(error.message || 'Failed to deactivate employee');
+        }
       }
     }
   };
@@ -234,7 +270,7 @@ const Employees = () => {
         <div className="mt-4 flex md:ml-4 md:mt-0">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Employee
@@ -258,18 +294,21 @@ const Employees = () => {
               />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            >
-              <option value="all">All Roles</option>
-              <option value="company_admin">Company Admin</option>
-              <option value="employee">Employee</option>
-            </select>
-          </div>
+          {/* Role filter - only show for platform admins */}
+          {!isCompanyAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              >
+                <option value="all">All Roles</option>
+                <option value="company_admin">Company Admin</option>
+                <option value="employee">Employee</option>
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
@@ -349,7 +388,9 @@ const Employees = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{employee.email}</div>
-                      <div className="text-sm text-gray-500">{employee.phone || 'No phone'}</div>
+                      <div className="text-sm text-gray-500">
+                        {employee.phone || employee.mobile || employee.phone_number || employee.contact || 'No phone'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(employee.role)}`}>
@@ -368,22 +409,24 @@ const Employees = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEditEmployee(employee)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        {employee.is_active === true && (
-                          <button
-                            onClick={() => handleDeactivateEmployee(employee)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Deactivate"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
+                      <div className="flex space-x-2">
+                        {employee.role === 'employee' && (
+                          <>
+                            <button
+                              onClick={() => handleEditEmployee(employee)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEmployee(employee)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -475,44 +518,48 @@ const Employees = () => {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Full Name *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                       <input
                         type="text"
                         required
                         value={newEmployee.full_name}
                         onChange={(e) => setNewEmployee({...newEmployee, full_name: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        placeholder="Enter full name"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Email *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                       <input
                         type="email"
                         required
                         value={newEmployee.email}
                         onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        placeholder="Enter email"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
                       <input
                         type="tel"
+                        required
                         value={newEmployee.phone}
                         onChange={(e) => setNewEmployee({...newEmployee, phone: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        placeholder="Enter mobile number"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Role</label>
-                      <select
-                        value={newEmployee.role}
-                        onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                      >
-                        <option value="employee">Employee</option>
-                        <option value="company_admin">Company Admin</option>
-                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                      <input
+                        type="password"
+                        required
+                        value={newEmployee.password}
+                        onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        placeholder="Enter password"
+                      />
                     </div>
                   </div>
                 </div>
@@ -554,55 +601,33 @@ const Employees = () => {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Full Name *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                       <input
                         type="text"
                         required
                         value={selectedEmployee.full_name}
                         onChange={(e) => setSelectedEmployee({...selectedEmployee, full_name: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Email *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                       <input
                         type="email"
                         required
                         value={selectedEmployee.email}
                         onChange={(e) => setSelectedEmployee({...selectedEmployee, email: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                       <input
                         type="tel"
                         value={selectedEmployee.phone}
                         onChange={(e) => setSelectedEmployee({...selectedEmployee, phone: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Role</label>
-                      <select
-                        value={selectedEmployee.role}
-                        onChange={(e) => setSelectedEmployee({...selectedEmployee, role: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                      >
-                        <option value="employee">Employee</option>
-                        <option value="company_admin">Company Admin</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Status</label>
-                      <select
-                        value={selectedEmployee.status}
-                        onChange={(e) => setSelectedEmployee({...selectedEmployee, status: e.target.value})}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
                     </div>
                   </div>
                 </div>
