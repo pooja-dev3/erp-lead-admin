@@ -11,6 +11,7 @@ const Users = () => {
   const { showSuccess, showError } = useNotification();
 
   const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,9 +61,18 @@ const Users = () => {
       }
       const response = await usersAPI.getUsers(params);
       setUsers(response.users || []);
+      
+      // Set total count from pagination or fallback to users array length
+      if (response.pagination && response.pagination.total_records !== undefined) {
+        setTotalUsers(response.pagination.total_records);
+      } else {
+        setTotalUsers(response.users?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       showError('Failed to fetch users');
+      setUsers([]);
+      setTotalUsers(0);
     } finally {
       setLoading(false);
     }
@@ -317,6 +327,11 @@ const Users = () => {
 
       {/* Users Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+          <h3 className="text-lg font-medium leading-6 text-gray-900">
+            Users ({totalUsers})
+          </h3>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

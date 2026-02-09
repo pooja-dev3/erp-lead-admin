@@ -23,6 +23,11 @@ const LeadDetails = () => {
       console.log('LeadDetails - Fetching lead for ID:', id);
       const response = await leadsAPI.getLead(id);
       console.log('LeadDetails - Received lead data:', response);
+      console.log('LeadDetails - Response structure:', JSON.stringify(response, null, 2));
+      
+      // Check if response has lead property or is direct lead data
+      const leadData = response.lead || response;
+      console.log('LeadDetails - Using lead data:', JSON.stringify(leadData, null, 2));
       setLead(response);
     } catch (error) {
       console.error('LeadDetails - Error fetching lead details:', error);
@@ -78,13 +83,9 @@ const LeadDetails = () => {
   if (lead) {
     console.log('Field access test:');
     console.log('lead.lead?.visitor_name:', lead.lead?.visitor_name);
-    console.log('lead.lead?.visitor_email:', lead.lead?.visitor_email);
-    console.log('lead.lead?.visitor_phone:', lead.lead?.visitor_phone);
-    console.log('lead.lead?.visitor_designation:', lead.lead?.visitor_designation);
-    console.log('lead.lead?.organization:', lead.lead?.organization);
-    console.log('lead.lead?.city:', lead.lead?.city);
-    console.log('lead.lead?.country:', lead.lead?.country);
-    console.log('lead.lead?.company_name:', lead.lead?.company_name);
+    console.log('lead.visitor_name:', lead.visitor_name);
+    console.log('Response structure check - has lead property:', !!lead.lead);
+    console.log('Response structure check - direct access:', !!lead.visitor_name);
   }
 
   return (
@@ -105,7 +106,7 @@ const LeadDetails = () => {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Lead Details</h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  Lead ID: {lead.lead?.id || 'N/A'}
+                  Lead ID: {lead.lead?.id || lead.id || 'N/A'}
                 </p>
               </div>
             </div>
@@ -123,23 +124,23 @@ const LeadDetails = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                    <p className="text-gray-900">{lead.lead?.visitor_name || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_name || lead.visitor_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{lead.lead?.visitor_email || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_email || lead.visitor_email || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-gray-900">{lead.lead?.visitor_phone || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_phone || lead.visitor_phone || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Designation</label>
-                    <p className="text-gray-900">{lead.lead?.visitor_designation || 'N/A'}</p>
+                    <p className="text-gray-900">{(lead.lead?.visitor_designation || lead.visitor_designation) || (lead.lead?.designation || lead.designation) || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Visitor ID</label>
-                    <p className="text-gray-900 text-sm">{lead.lead?.visitor_id || 'N/A'}</p>
+                    <p className="text-gray-900">{(lead.lead?.visitor_id || lead.visitor_id) || (lead.lead?.id || lead.id) || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -153,23 +154,23 @@ const LeadDetails = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Organization</label>
-                    <p className="text-gray-900">{lead.lead?.organization || lead.lead?.visitor_organization || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_organization || lead.visitor_organization || (lead.lead?.organization || lead.organization) || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">City</label>
-                    <p className="text-gray-900">{lead.lead?.city || lead.lead?.visitor_city || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_city || lead.visitor_city || (lead.lead?.city || lead.city) || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Country</label>
-                    <p className="text-gray-900">{lead.lead?.country || lead.lead?.visitor_country || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.visitor_country || lead.visitor_country || (lead.lead?.country || lead.country) || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Company</label>
-                    <p className="text-gray-900">{lead.lead?.company_name || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.company_name || lead.company_name || lead.lead?.visitor_company || lead.visitor_company || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Company ID</label>
-                    <p className="text-gray-900 text-sm">{lead.lead?.company_id || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.company_id || lead.company_id || lead.lead?.visitor_company_id || lead.visitor_company_id || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -189,20 +190,20 @@ const LeadDetails = () => {
                       lead.lead?.interests === 'Cold' ? 'bg-blue-100 text-blue-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {lead.lead?.interests || 'Not Specified'}
+                      {lead.interests || 'Not Specified'}
                     </span>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Follow-up Date</label>
                     <p className="text-gray-900 flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      {lead.lead?.follow_up_date ? new Date(lead.lead.follow_up_date).toLocaleDateString() : 'Not Set'}
+                      {new Date(lead.follow_up_date || lead.lead?.follow_up_date).toLocaleDateString() || 'Not Set'}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Created Date</label>
                     <p className="text-gray-900">
-                      {lead.lead?.created_at ? new Date(lead.lead.created_at).toLocaleDateString() : 'N/A'}
+                      {new Date(lead.created_at || lead.lead?.created_at).toLocaleDateString() || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -217,15 +218,15 @@ const LeadDetails = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Employee Name</label>
-                    <p className="text-gray-900">{lead.lead?.employee_name || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.employee_name || lead.employee_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Employee Email</label>
-                    <p className="text-gray-900">{lead.lead?.employee_email || 'N/A'}</p>
+                    <p className="text-gray-900">{lead.lead?.employee_email || lead.employee_email || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Employee ID</label>
-                    <p className="text-gray-900 text-sm">{lead.lead?.employee_id || 'N/A'}</p>
+                    <p className="text-gray-900 text-sm">{lead.lead?.employee_id || lead.employee_id || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -238,7 +239,7 @@ const LeadDetails = () => {
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-gray-900 whitespace-pre-wrap">
-                    {lead.lead?.notes || 'No notes available'}
+                    {lead.notes || lead.lead?.notes || 'No notes available'}
                   </p>
                 </div>
               </div>

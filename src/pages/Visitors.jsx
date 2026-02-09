@@ -20,7 +20,8 @@ import {
   Building2,
   Plus,
   UserPlus,
-  Trash2,
+  Power,
+  PowerOff,
   TrendingUp,
   Activity
 } from 'lucide-react';
@@ -30,8 +31,7 @@ const Visitors = () => {
   const { user, companyId } = useAuth();
   const { showSuccess, showError } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
+    const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState([]);
   const [pagination, setPagination] = useState({});
@@ -40,6 +40,7 @@ const Visitors = () => {
   const [selectedVisitor, setSelectedVisitor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [visitorStats, setVisitorStats] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [newVisitor, setNewVisitor] = useState({
     full_name: '',
     email: '',
@@ -71,7 +72,7 @@ const Visitors = () => {
   useEffect(() => {
     fetchVisitors();
     fetchVisitorStats();
-  }, [currentPage, searchTerm, filterStatus, companyId]);
+  }, [currentPage, searchTerm, companyId, statusFilter]);
 
   const fetchVisitorStats = async () => {
     try {
@@ -88,7 +89,6 @@ const Visitors = () => {
       const params = {
         page: currentPage,
         search: searchTerm || undefined,
-        status: filterStatus !== 'all' ? filterStatus : undefined,
         company_id: companyId
       };
       
@@ -120,7 +120,18 @@ const Visitors = () => {
         console.log('First visitor keys:', Object.keys(visitorsData[0]));
       }
       
-      setVisitors(visitorsData);
+      // Apply status filtering
+      let filteredVisitors = visitorsData;
+      if (statusFilter !== 'all') {
+        filteredVisitors = visitorsData.filter(visitor => {
+          const isLikelyDeleted = !visitor.full_name && !visitor.email && !visitor.organization;
+          return statusFilter === 'active' ? !isLikelyDeleted : isLikelyDeleted;
+        });
+        console.log(`Applied ${statusFilter} filter: ${filteredVisitors.length} visitors remaining`);
+      }
+      
+      // Use filtered visitors
+      setVisitors(filteredVisitors);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error('Error fetching visitors:', error);
@@ -219,15 +230,7 @@ const Visitors = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'checked_in': return 'bg-green-100 text-green-800';
-      case 'checked_out': return 'bg-gray-100 text-gray-800';
-      case undefined: return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-yellow-100 text-yellow-800';
-    }
-  };
-
+  
   const handleViewVisitor = (visitor) => {
     navigate(`/visitors/${visitor.id}`);
   };
@@ -237,15 +240,33 @@ const Visitors = () => {
     setShowEditForm(true);
   };
 
-  const handleDeleteVisitor = async (visitor) => {
-    if (confirm(`Are you sure you want to delete ${visitor.full_name}? This action cannot be undone.`)) {
+  const handleToggleVisitorStatus = async (visitor) => {
+    const isActive = !visitor.full_name && !visitor.email && !visitor.organization;
+    const action = isActive ? 'activate' : 'deactivate';
+    const confirmMessage = isActive 
+      ? `Are you sure you want to activate ${visitor.full_name || 'this visitor'}?`
+      : `Are you sure you want to deactivate ${visitor.full_name || 'this visitor'}? They will no longer appear in active lists.`;
+    
+    if (confirm(confirmMessage)) {
       try {
-        await visitorsAPI.deleteVisitor(visitor.id);
-        showSuccess('Visitor deleted successfully');
+        const result = await visitorsAPI.updateVisitor(visitor.id, {
+          is_deleted: isActive ? false : true,
+          status: isActive ? 'active' : 'inactive',
+          deleted_at: isActive ? null : new Date().toISOString(),
+          // Clear data when deactivating, restore when activating
+          full_name: isActive ? 'Restored Visitor' : null,
+          email: isActive ? 'restored@example.com' : null,
+          organization: isActive ? 'Restored Org' : null,
+          designation: isActive ? 'Restored' : null,
+          city: isActive ? 'Restored City' : null,
+          country: isActive ? 'Restored Country' : null
+        });
+        
+        showSuccess(`Visitor ${isActive ? 'activated' : 'deactivated'} successfully`);
         fetchVisitors();
       } catch (error) {
-        console.error('Error deleting visitor:', error);
-        showError('Failed to delete visitor');
+        console.error('Error toggling visitor status:', error);
+        showError(`Failed to ${action} visitor`);
       }
     }
   };
@@ -376,43 +397,81 @@ const Visitors = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search visitors..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+        <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search visitors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="checked_in">Active</option>
-              <option value="checked_out">Inactive</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
+            {/* <button
               onClick={() => {
                 setSearchTerm('');
-                setFilterStatus('all');
                 setCurrentPage(1);
               }}
               className="btn btn-secondary"
             >
               Clear Filters
-            </button>
+            </button> */}
+          </div>
+      </div>
+
+      {/* Status Filter */}
+      <div className="bg-white shadow rounded-lg p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-gray-700">Status:</span>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  statusFilter === 'all'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All ({visitors.length})
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('active');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  statusFilter === 'active'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('inactive');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${
+                  statusFilter === 'inactive'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Inactive
+              </button>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            Showing {visitors.length} visitors
           </div>
         </div>
       </div>
@@ -433,7 +492,7 @@ const Visitors = () => {
             <UserCheck className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No visitors found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'Get started by checking in a new visitor'}
+              {searchTerm ? 'Try adjusting your search' : 'Get started by checking in a new visitor'}
             </p>
           </div>
         ) : (
@@ -451,10 +510,10 @@ const Visitors = () => {
                     Designation
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Location
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Registration Date
@@ -472,10 +531,17 @@ const Visitors = () => {
                   console.log(`Visitor ${index} check_in_time:`, visitor.check_in_time);
                   console.log(`Visitor ${index} status:`, visitor.status);
                   console.log(`Visitor ${index} purpose:`, visitor.purpose);
+                  
+                  // Check if visitor appears to be deleted (mostly null/undefined values)
+                  const isLikelyDeleted = !visitor.full_name && !visitor.email && !visitor.organization;
+                  
                   return (
-                  <tr key={visitor.id} className="hover:bg-gray-50">
+                  <tr key={visitor.id} className={`hover:bg-gray-50 ${isLikelyDeleted ? 'opacity-50' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{visitor.full_name || 'Unknown'}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {visitor.full_name || 'Unknown'}
+                        {isLikelyDeleted && <span className="ml-2 text-xs text-orange-600">(Inactive)</span>}
+                      </div>
                       <div className="text-sm text-gray-500">{visitor.organization || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -486,12 +552,16 @@ const Visitors = () => {
                       <div className="text-sm text-gray-500">{visitor.designation || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{visitor.city || 'N/A'}, {visitor.country || 'N/A'}</div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        isLikelyDeleted 
+                          ? 'bg-orange-100 text-orange-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {isLikelyDeleted ? 'Inactive' : 'Active'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800`}>
-                        Active
-                      </span>
+                      <div className="text-sm text-gray-500">{visitor.city || 'N/A'}, {visitor.country || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {visitor.created_at ? new Date(visitor.created_at).toLocaleString() : 'N/A'}
@@ -513,11 +583,11 @@ const Visitors = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteVisitor(visitor)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Visitor"
+                          onClick={() => handleToggleVisitorStatus(visitor)}
+                          className={`${isLikelyDeleted ? 'text-green-600 hover:text-green-900' : 'text-orange-600 hover:text-orange-900'}`}
+                          title={isLikelyDeleted ? 'Activate Visitor' : 'Deactivate Visitor'}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {isLikelyDeleted ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
                         </button>
                       </div>
                     </td>

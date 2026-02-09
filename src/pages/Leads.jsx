@@ -148,6 +148,22 @@ const Leads = () => {
     return name && name.trim().length >= 2;
   };
 
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    if (dateString.includes('T')) {
+      return dateString.split('T')[0];
+    }
+    return dateString;
+  };
+
+  const formatDateForAPI = (dateString) => {
+    if (!dateString) return '';
+    if (dateString.includes('T')) {
+      return dateString.split('T')[0];
+    }
+    return dateString;
+  };
+
   const validateFollowUpDate = (date) => {
     if (!date) return false; // Follow-up date is now required
     const selectedDate = new Date(date);
@@ -260,7 +276,9 @@ const Leads = () => {
 
   const handleUpdateLead = async (id, leadData) => {
     try {
-      await leadsAPI.updateLead(id, leadData);
+      // Pass company_id parameter for platform admins
+      const params = isPlatformAdmin && selectedCompanyId ? { company_id: selectedCompanyId } : {};
+      await leadsAPI.updateLead(id, leadData, params);
       showSuccess('Lead updated successfully');
       fetchLeads();
     } catch (error) {
@@ -295,7 +313,18 @@ const Leads = () => {
   };
 
   const handleEditLead = (lead) => {
-    setEditingLead(lead);
+    // Store original values to detect changes
+    const leadWithOriginals = {
+      ...lead,
+      original_visitor_name: lead.visitor_name,
+      original_visitor_email: lead.visitor_email,
+      original_visitor_phone: lead.visitor_phone,
+      original_visitor_organization: lead.visitor_organization,
+      original_visitor_designation: lead.visitor_designation,
+      original_visitor_city: lead.visitor_city,
+      original_visitor_country: lead.visitor_country
+    };
+    setEditingLead(leadWithOriginals);
     setShowEditForm(true);
   };
 
@@ -329,6 +358,12 @@ const Leads = () => {
     try {
       setIsSubmitting(true);
       
+      // For platform admins, ensure we have a company context
+      if (isPlatformAdmin && !selectedCompanyId && !editingLead.company_id) {
+        showError('Please select a company from the dropdown before updating leads');
+        return;
+      }
+      
       // Format the follow_up_date properly for the API
       let formattedFollowUpDate = null;
       if (editingLead.follow_up_date) {
@@ -340,21 +375,91 @@ const Leads = () => {
         }
       }
       
-      const leadData = {
-        // Only send lead-specific fields that the API accepts
-        organization: editingLead.visitor_organization || editingLead.organization,
-        designation: editingLead.visitor_designation || editingLead.designation,
-        city: editingLead.visitor_city || editingLead.city,
-        country: editingLead.visitor_country || editingLead.country,
-        interests: editingLead.interests,
-        notes: editingLead.notes,
-        follow_up_date: formattedFollowUpDate
-        // Remove visitor fields as API doesn't accept them in update
-      };
+      // Update visitor contact information first if it has changed
+      if (editingLead.visitor_id && 
+          (editingLead.visitor_name !== editingLead.original_visitor_name ||
+           editingLead.visitor_email !== editingLead.original_visitor_email ||
+           editingLead.visitor_phone !== editingLead.original_visitor_phone ||
+           editingLead.visitor_organization !== editingLead.original_visitor_organization ||
+           editingLead.visitor_designation !== editingLead.original_visitor_designation ||
+           editingLead.visitor_city !== editingLead.original_visitor_city ||
+           editingLead.visitor_country !== editingLead.original_visitor_country)) {
+        
+        console.log('Updating visitor contact information...');
+        const visitorData = {
+          full_name: editingLead.visitor_name,
+          email: editingLead.visitor_email,
+          phone: editingLead.visitor_phone,
+          organization: editingLead.visitor_organization,
+          designation: editingLead.visitor_designation,
+          city: editingLead.visitor_city,
+          country: editingLead.visitor_country
+        };
+        
+        console.log('Visitor data being sent:', JSON.stringify(visitorData, null, 2));
+        
+        try {
+          await visitorsAPI.updateVisitor(editingLead.visitor_id, visitorData);
+          console.log('Visitor information updated successfully');
+        } catch (visitorError) {
+          console.error('Failed to update visitor information:', visitorError);
+          // Continue with lead update even if visitor update fails
+          console.log('Continuing with lead update...');
+        }
+      }
       
-      console.log('Updating lead with data:', JSON.stringify(leadData, null, 2));
+      const leadData = {};
       
-      const response = await leadsAPI.updateLead(editingLead.id, leadData);
+      // Only include fields that have actually changed
+      console.log('=== CHANGE DETECTION DEBUG ===');
+      console.log('visitor_organization changed:', editingLead.visitor_organization, '!==', editingLead.original_visitor_organization, '=', editingLead.visitor_organization !== editingLead.original_visitor_organization);
+      console.log('visitor_designation changed:', editingLead.visitor_designation, '!==', editingLead.original_visitor_designation, '=', editingLead.visitor_designation !== editingLead.original_visitor_designation);
+      console.log('visitor_city changed:', editingLead.visitor_city, '!==', editingLead.original_visitor_city, '=', editingLead.visitor_city !== editingLead.original_visitor_city);
+      console.log('visitor_country changed:', editingLead.visitor_country, '!==', editingLead.original_visitor_country, '=', editingLead.visitor_country !== editingLead.original_visitor_country);
+      
+      if (editingLead.visitor_organization !== editingLead.original_visitor_organization) {
+        leadData.organization = editingLead.visitor_organization;
+        console.log('Adding organization to update:', editingLead.visitor_organization);
+      }
+      if (editingLead.visitor_designation !== editingLead.original_visitor_designation) {
+        leadData.designation = editingLead.visitor_designation;
+        console.log('Adding designation to update:', editingLead.visitor_designation);
+      }
+      if (editingLead.visitor_city !== editingLead.original_visitor_city) {
+        leadData.city = editingLead.visitor_city;
+        console.log('Adding city to update:', editingLead.visitor_city);
+      }
+      if (editingLead.visitor_country !== editingLead.original_visitor_country) {
+        leadData.country = editingLead.visitor_country;
+        console.log('Adding country to update:', editingLead.visitor_country);
+      }
+      
+      // Always include these fields as they might be edited
+      leadData.interests = editingLead.interests;
+      leadData.notes = editingLead.notes;
+      if (editingLead.follow_up_date) {
+        leadData.follow_up_date = formatDateForAPI(editingLead.follow_up_date);
+      }
+      
+      console.log('Final leadData:', JSON.stringify(leadData, null, 2));
+      console.log('=== END CHANGE DETECTION DEBUG ===');
+      
+      console.log('=== FRONTEND DATA ANALYSIS ===');
+      console.log('editingLead state:', JSON.stringify(editingLead, null, 2));
+      console.log('Form field sources:');
+      console.log('  - organization source:', editingLead.visitor_organization || editingLead.organization);
+      console.log('  - designation source:', editingLead.visitor_designation || editingLead.designation);
+      console.log('  - city source:', editingLead.visitor_city || editingLead.city);
+      console.log('  - country source:', editingLead.visitor_country || editingLead.country);
+      console.log('Final leadData being sent:', JSON.stringify(leadData, null, 2));
+      console.log('=== END FRONTEND ANALYSIS ===');
+      
+      // Pass company_id parameter for platform admins
+      const effectiveCompanyId = isPlatformAdmin ? (selectedCompanyId || editingLead.company_id) : companyId;
+      const params = isPlatformAdmin && effectiveCompanyId ? { company_id: effectiveCompanyId } : {};
+      console.log('Sending params for update:', params);
+      
+      const response = await leadsAPI.updateLead(editingLead.id, leadData, params);
       console.log('Lead update response:', response);
       console.log('Full response structure:', JSON.stringify(response, null, 2));
       
@@ -366,11 +471,11 @@ const Leads = () => {
       if (updatedLeadData) {
         console.log('=== UPDATE VERIFICATION ===');
         console.log('Sent designation:', leadData.designation);
-        console.log('Received designation:', updatedLeadData.designation);
-        console.log('Designation updated:', leadData.designation === updatedLeadData.designation);
+        console.log('Received designation:', updatedLeadData.lead?.designation);
+        console.log('Designation updated:', leadData.designation === updatedLeadData.lead?.designation);
         console.log('Sent organization:', leadData.organization);
-        console.log('Received organization:', updatedLeadData.organization);
-        console.log('Organization updated:', leadData.organization === updatedLeadData.organization);
+        console.log('Received organization:', updatedLeadData.lead?.organization);
+        console.log('Organization updated:', leadData.organization === updatedLeadData.lead?.organization);
         
         // Also check all fields for debugging
         console.log('All received fields:', Object.keys(updatedLeadData));
@@ -387,7 +492,17 @@ const Leads = () => {
       // Add a small delay before refreshing to ensure backend has processed the update
       setTimeout(() => {
         console.log('Refreshing leads list after update...');
-        fetchLeads();
+        // For platform admins, temporarily use the lead's company_id if no company is selected
+        if (isPlatformAdmin && !selectedCompanyId && editingLead.company_id) {
+          const originalSelectedCompanyId = selectedCompanyId;
+          setSelectedCompanyId(editingLead.company_id);
+          fetchLeads().then(() => {
+            // Restore original selection
+            setSelectedCompanyId(originalSelectedCompanyId);
+          });
+        } else {
+          fetchLeads();
+        }
       }, 500);
     } catch (error) {
       console.error('Error updating lead:', error);
@@ -622,6 +737,9 @@ const Leads = () => {
               onClick={() => {
                 setSearchTerm('');
                 setCurrentPage(1);
+                if (isPlatformAdmin) {
+                  setSelectedCompanyId('');
+                }
               }}
               className="btn btn-secondary"
             >
@@ -1146,23 +1264,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <input
-                            type="email"
-                            required
-                            value={editingLead.visitor_email || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_email: e.target.value })}
-                            placeholder="Email address"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Phone className="h-5 w-5 text-gray-400" />
@@ -1170,25 +1272,26 @@ const Leads = () => {
                           <input
                             type="tel"
                             value={editingLead.visitor_phone || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_phone: e.target.value })}
                             placeholder="Phone number"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                            required
+                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg shadow-sm bg-gray-50 text-gray-600 sm:text-sm cursor-not-allowed"
+                            disabled
+                            readOnly
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Building2 className="h-5 w-5 text-gray-400" />
+                            <Mail className="h-5 w-5 text-gray-400" />
                           </div>
                           <input
-                            type="text"
-                            value={editingLead.visitor_organization || editingLead.organization || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_organization: e.target.value })}
-                            placeholder="Organization"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            type="email"
+                            value={editingLead.visitor_email || ''}
+                            placeholder="Email address"
+                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg shadow-sm bg-gray-50 text-gray-600 sm:text-sm cursor-not-allowed"
+                            disabled
+                            readOnly
                           />
                         </div>
                       </div>
@@ -1200,7 +1303,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="text"
-                            value={editingLead.visitor_designation || editingLead.designation || ''}
+                            value={editingLead.visitor_designation || ''}
                             onChange={(e) => setEditingLead({ ...editingLead, visitor_designation: e.target.value })}
                             placeholder="Designation"
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
@@ -1215,7 +1318,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="text"
-                            value={editingLead.visitor_city || editingLead.city || ''}
+                            value={editingLead.visitor_city || ''}
                             onChange={(e) => setEditingLead({ ...editingLead, visitor_city: e.target.value })}
                             placeholder="City"
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
@@ -1230,7 +1333,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="text"
-                            value={editingLead.visitor_country || editingLead.country || ''}
+                            value={editingLead.visitor_country || ''}
                             onChange={(e) => setEditingLead({ ...editingLead, visitor_country: e.target.value })}
                             placeholder="Country"
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
@@ -1273,7 +1376,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="date"
-                            value={editingLead.follow_up_date || ''}
+                            value={formatDateForInput(editingLead.follow_up_date)}
                             onChange={(e) => setEditingLead({ ...editingLead, follow_up_date: e.target.value })}
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
                           />

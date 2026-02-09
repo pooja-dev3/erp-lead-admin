@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { companiesAPI } from '../utils/apiService';
+import { companiesAPI, leadsAPI, dashboardAPI } from '../utils/apiService';
 import { useNotification } from '../contexts/NotificationContext';
 import {
   BarChart3,
@@ -47,31 +47,33 @@ const CompanyAnalytics = () => {
       const companiesList = companiesResponse.companies || [];
       setCompanies(companiesList);
 
+      // Fetch dashboard data for accurate leads count
+      const dashboardData = await dashboardAPI.getOverview();
+      const accurateLeadsCount = dashboardData.leads?.total || 0;
+      
       // Calculate real analytics metrics
       const totalCompaniesCount = companiesList.length;
       const activeCompaniesCount = companiesList.filter(c => c.status === 'active' || c.status === 'Active').length;
       
-      // Calculate total leads by summing up all company leads
-      const totalLeadsCount = companiesList.reduce((sum, company) => {
-        const companyLeads = parseInt(company.total_leads) || parseInt(company.leads) || parseInt(company.lead_count) || 0;
-        return sum + companyLeads;
-      }, 0);
-      
+      // Use accurate leads count from dashboard API instead of manual calculation
+      console.log('Using dashboard API for accurate leads count:', accurateLeadsCount);
+      console.log('Dashboard response:', dashboardData);
+
       // Calculate total users by summing up all company users with multiple fallback fields
       const totalUsersCount = companiesList.reduce((sum, company) => {
         const companyUsers = parseInt(company.total_users) || parseInt(company.users) || parseInt(company.user_count) || parseInt(company.employee_count) || 0;
         return sum + companyUsers;
       }, 0);
-      const conversionRateCount = totalUsersCount > 0 ? ((totalLeadsCount / totalUsersCount) * 100).toFixed(1) : '0.0';
+      const conversionRateCount = totalUsersCount > 0 ? ((accurateLeadsCount / totalUsersCount) * 100).toFixed(1) : '0.0';
       
       // Set state for JSX access
       setTotalCompanies(totalCompaniesCount);
       setActiveCompanies(activeCompaniesCount);
-      setTotalLeads(totalLeadsCount);
+      setTotalLeads(accurateLeadsCount);
       setTotalUsers(totalUsersCount);
       setConversionRate(conversionRateCount);
       
-      console.log('Total leads calculated:', totalLeadsCount);
+      console.log('Total leads calculated:', accurateLeadsCount);
       console.log('Total users calculated:', totalUsersCount);
       console.log('Companies count:', totalCompaniesCount);
       console.log('Companies leads breakdown:', companiesList.map(c => ({ name: c.name, leads: c.total_leads || c.leads || c.lead_count || 0 })));
@@ -103,7 +105,7 @@ const CompanyAnalytics = () => {
         },
         {
           title: 'Total Leads Generated',
-          value: totalLeadsCount.toString(),
+          value: totalLeads.toString(),
           change: '+15.3%',
           changeType: 'positive',
           icon: Users,
@@ -138,7 +140,7 @@ const CompanyAnalytics = () => {
       // Create monthly data based on real company data
       const monthlyDataGenerated = months.map((month, index) => {
         // Use real leads data distributed across months
-        const monthLeads = Math.floor(totalLeadsCount / 12) + (index === currentMonth ? Math.floor(totalLeadsCount * 0.1) : 0);
+        const monthLeads = Math.floor(totalLeads / 12) + (index === currentMonth ? Math.floor(totalLeads * 0.1) : 0);
         
         return {
           month,
@@ -218,8 +220,8 @@ const CompanyAnalytics = () => {
           color: 'text-green-600'
         },
         {
-          title: 'Total Generated',
-          value: '0',
+          title: 'Total Leads Generated',
+          value: totalLeads.toString(),
           change: '0%',
           changeType: 'neutral',
           icon: Users,

@@ -1,11 +1,19 @@
-import { Bell, Search, User, Menu, X, ChevronDown, LogOut } from 'lucide-react';
+import { Bell, Search, User, Menu, X, ChevronDown, LogOut, Building2, Users, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { leadsAPI, companiesAPI } from '../utils/apiService';
 
 const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const dropdownRef = useRef(null);
+  const searchRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -13,11 +21,78 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsProfileDropdownOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchResults(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Search functionality
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    setIsSearchLoading(true);
+    try {
+      const results = [];
+      
+      // Search leads
+      try {
+        const leadsResponse = await leadsAPI.getLeads({ search: query, limit: 5 });
+        if (leadsResponse.leads) {
+          results.push(...leadsResponse.leads.map(lead => ({
+            ...lead,
+            type: 'lead',
+            displayName: lead.full_name,
+            subtitle: lead.email || 'No email',
+            route: `/leads/${lead.id}`
+          })));
+        }
+      } catch (error) {
+        console.log('Error searching leads:', error);
+      }
+
+      // Search companies (only for platform admins)
+      if (user?.role === 'platform_admin') {
+        try {
+          const companiesResponse = await companiesAPI.getCompanies({ search: query, limit: 5 });
+          if (companiesResponse.companies) {
+            results.push(...companiesResponse.companies.map(company => ({
+              ...company,
+              type: 'company',
+              displayName: company.name,
+              subtitle: company.company_code || 'No code',
+              route: `/companies/${company.id}`
+            })));
+          }
+        } catch (error) {
+          console.log('Error searching companies:', error);
+        }
+      }
+
+      setSearchResults(results.slice(0, 10)); // Limit to 10 results total
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearchLoading(false);
+    }
+  };
+
+  const handleResultClick = (result) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    navigate(result.route);
+  };
 
   const handleSignOut = () => {
     setIsProfileDropdownOpen(false);
@@ -48,7 +123,7 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
 
             {/* Search */}
             <div className="flex flex-1 justify-center px-2 lg:ml-6 lg:justify-end">
-              <div className="w-full max-w-lg lg:max-w-xs">
+              <div className="w-full max-w-lg lg:max-w-xs relative" ref={searchRef}>
                 <label htmlFor="search-field" className="sr-only">
                   Search
                 </label>
@@ -62,8 +137,56 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
                     placeholder="Search leads, companies..."
                     type="search"
                     name="search"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onFocus={() => searchQuery.trim().length >= 2 && setShowSearchResults(true)}
                   />
                 </div>
+
+                {/* Search Results Dropdown */}
+                {showSearchResults && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
+                    {isSearchLoading ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                        <span className="ml-2">Searching...</span>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="py-2">
+                        {searchResults.map((result, index) => (
+                          <button
+                            key={`${result.type}-${result.id}-${index}`}
+                            onClick={() => handleResultClick(result)}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="flex-shrink-0">
+                              {result.type === 'lead' ? (
+                                <Users className="h-5 w-5 text-blue-500" />
+                              ) : (
+                                <Building2 className="h-5 w-5 text-green-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">
+                                {result.displayName}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {result.subtitle}
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0">
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : searchQuery.trim().length >= 2 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        No results found for "{searchQuery}"
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </div>
           </div>

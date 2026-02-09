@@ -707,9 +707,10 @@ const Companies = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone</label>
+                          <label className="block text-sm font-medium text-gray-700">Phone *</label>
                           <input
                             type="tel"
+                            required
                             value={newCompany.phone}
                             onChange={(e) => setNewCompany({ ...newCompany, phone: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"

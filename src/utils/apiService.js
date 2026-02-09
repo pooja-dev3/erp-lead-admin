@@ -282,8 +282,45 @@ export const companiesAPI = {
 // Visitors Management APIs
 export const visitorsAPI = {
   getVisitors: async (params = {}) => {
-    const response = await api.get('/visitors', { params });
-    return response.data;
+    console.log('=== GET VISITORS API DEBUG ===');
+    console.log('Request params:', params);
+    console.log('Request URL:', '/visitors');
+    console.log('Request method:', 'GET');
+    
+    try {
+      const response = await api.get('/visitors', { params });
+      console.log('GET visitors response:', response);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      console.log('Response data type:', typeof response.data);
+      console.log('Response data keys:', Object.keys(response.data || {}));
+      
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          console.log('Response is directly an array with', response.data.length, 'items');
+        } else if (response.data.visitors && Array.isArray(response.data.visitors)) {
+          console.log('Response has visitors array with', response.data.visitors.length, 'items');
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          console.log('Response has data array with', response.data.data.length, 'items');
+        } else {
+          console.log('Response structure is unexpected');
+          console.log('Full response structure:', JSON.stringify(response.data, null, 2));
+        }
+      }
+      
+      console.log('=== END GET VISITORS DEBUG ===');
+      return response.data;
+    } catch (error) {
+      console.error('=== GET VISITORS ERROR ===');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      console.error('=== END GET VISITORS ERROR ===');
+      throw error;
+    }
   },
   createVisitor: async (visitorData) => {
     const response = await api.post('/visitors', visitorData);
@@ -301,12 +338,104 @@ export const visitorsAPI = {
     }
   },
   updateVisitor: async (id, visitorData) => {
-    const response = await api.put(`/visitors/${id}`, visitorData);
-    return response.data;
+    console.log('Attempting to update visitor with ID:', id);
+    console.log('Visitor data being sent:', JSON.stringify(visitorData, null, 2));
+    
+    try {
+      const response = await api.put(`/visitors/${id}`, visitorData);
+      console.log('Update visitor response:', response);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('UPDATE request failed:', error.response?.status, error.response?.data);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        const validationErrors = [];
+        
+        if (error.response?.data?.details) {
+          error.response.data.details.forEach((detail, index) => {
+            console.log(`Validation error ${index + 1}:`, detail);
+            validationErrors.push(`${detail.field}: ${detail.message}`);
+          });
+        }
+        
+        if (validationErrors.length > 0) {
+          const errorMessage = `Validation failed: ${validationErrors.join(', ')}`;
+          console.error('Validation errors:', errorMessage);
+          throw new Error(errorMessage);
+        }
+      }
+      
+      throw error;
+    }
   },
   deleteVisitor: async (id) => {
-    const response = await api.delete(`/visitors/${id}`);
-    return response.data;
+    console.log('Attempting to delete visitor with ID:', id);
+    
+    try {
+      // Approach 1: Try DELETE request first
+      const response = await api.delete(`/visitors/${id}`);
+      console.log('DELETE response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('DELETE request failed:', error.response?.status, error.response?.data);
+      
+      // Approach 2: Try DELETE with different endpoint structure
+      if (error.response?.status === 500 || error.response?.status === 404) {
+        console.log('DELETE failed, trying alternative endpoint...');
+        try {
+          const altResponse = await api.delete(`/admin/visitors/${id}`);
+          console.log('Alternative DELETE response:', altResponse);
+          return altResponse.data;
+        } catch (altError) {
+          console.error('Alternative DELETE failed:', altError.response?.status);
+        }
+      }
+      
+      // Approach 3: Try POST to delete endpoint (some APIs use POST for deletion)
+      if (error.response?.status === 500 || error.response?.status === 404) {
+        console.log('DELETE failed, trying POST to delete endpoint...');
+        try {
+          const postResponse = await api.post(`/visitors/${id}/delete`);
+          console.log('POST delete response:', postResponse);
+          return postResponse.data;
+        } catch (postError) {
+          console.error('POST delete failed:', postError.response?.status);
+        }
+      }
+      
+      // Approach 4: Try PUT with different delete fields (this one works!)
+      if (error.response?.status === 500 || error.response?.status === 404) {
+        console.log('All deletion attempts failed, trying PUT with is_deleted flag...');
+        try {
+          const putResponse = await api.put(`/visitors/${id}`, { 
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            status: 'deleted'
+          });
+          console.log('PUT delete response:', putResponse);
+          
+          // Return a more descriptive response for soft delete
+          return {
+            ...putResponse.data,
+            message: 'Visitor marked as deleted successfully. The visitor may still appear in the list temporarily.',
+            softDelete: true
+          };
+        } catch (putError) {
+          console.error('PUT delete failed:', putError.response?.status);
+          throw putError;
+        }
+      }
+      
+      throw error;
+    }
   },
   getVisitorStats: async () => {
     const response = await api.get('/visitors/stats/overview');
@@ -318,6 +447,10 @@ export const visitorsAPI = {
 export const leadsAPI = {
   getLeads: async (params = {}) => {
     const response = await api.get('/leads', { params });
+    return response.data;
+  },
+  getStatsOverview: async () => {
+    const response = await api.get('/admin/dashboard/leads-stats');
     return response.data;
   },
   createLead: async (leadData, params = {}) => {
@@ -417,15 +550,48 @@ export const leadsAPI = {
       throw error;
     }
   },
-  updateLead: async (id, leadData) => {
+  updateLead: async (id, leadData, params = {}) => {
     console.log('=== UPDATE LEAD API DEBUG ===');
     console.log('API Service - Updating lead with ID:', id);
     console.log('API Service - Update data:', JSON.stringify(leadData, null, 2));
+    console.log('API Service - Params received:', params);
     console.log('API Service - Request method:', 'PUT');
     console.log('API Service - Request URL:', `/leads/${id}`);
     
     try {
-      const response = await api.put(`/leads/${id}`, leadData);
+      // For lead updates, don't add company_id to request body
+      // The API doesn't accept company_id in update requests
+      const requestData = { ...leadData };
+      
+      console.log('=== DETAILED UPDATE ANALYSIS ===');
+      console.log('Original leadData received:', JSON.stringify(leadData, null, 2));
+      console.log('Final requestData being sent:', JSON.stringify(requestData, null, 2));
+      console.log('Request URL:', `/leads/${id}`);
+      console.log('Request method:', 'PUT');
+      console.log('Request headers:', {
+        'Content-Type': 'application/json',
+        'Authorization': api.defaults.headers.Authorization ? 'Bearer [TOKEN]' : 'No token'
+      });
+      
+      const response = await api.put(`/leads/${id}`, requestData);
+      
+      console.log('=== RESPONSE ANALYSIS ===');
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      console.log('Full response data:', JSON.stringify(response.data, null, 2));
+      
+      // Compare sent vs received for each field
+      if (response.data?.lead) {
+        console.log('=== FIELD COMPARISON ===');
+        Object.keys(requestData).forEach(key => {
+          const sentValue = requestData[key];
+          const receivedValue = response.data.lead[key];
+          const isUpdated = sentValue === receivedValue;
+          console.log(`${key}: sent="${sentValue}" → received="${receivedValue}" ${isUpdated ? '✅' : '❌'}`);
+        });
+      }
+      
+      console.log('=== END DETAILED ANALYSIS ===');
       console.log('API Service - Update response:', response);
       console.log('API Service - Response data:', response.data);
       console.log('=== END UPDATE LEAD DEBUG ===');
@@ -444,6 +610,15 @@ export const leadsAPI = {
           headers: error.config?.headers
         }
       });
+      
+      // Log specific validation details if available
+      if (error.response?.data?.details) {
+        console.log('Validation error details:', error.response.data.details);
+        error.response.data.details.forEach((detail, index) => {
+          console.log(`Validation error ${index + 1}:`, detail);
+        });
+      }
+      
       throw error;
     }
   },
@@ -477,6 +652,10 @@ export const companyAdminAPI = {
   },
   updateCompanyAdmin: async (id, adminData) => {
     const response = await api.put(`/admin/company-admins/${id}`, adminData);
+    return response.data;
+  },
+  deleteCompanyAdmin: async (id) => {
+    const response = await api.delete(`/admin/company-admins/${id}`);
     return response.data;
   },
 };

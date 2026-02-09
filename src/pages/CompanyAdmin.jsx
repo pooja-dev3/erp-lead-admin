@@ -26,6 +26,7 @@ const CompanyAdmin = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [companyAdmins, setCompanyAdmins] = useState([]);
+  const [allCompanyAdmins, setAllCompanyAdmins] = useState([]);
   const [pagination, setPagination] = useState({});
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +63,11 @@ const CompanyAdmin = () => {
   useEffect(() => {
     fetchCompanyAdmins();
     fetchCompanies();
-  }, [currentPage, searchTerm, filterCompany]);
+  }, []);
+
+  useEffect(() => {
+    filterCompanyAdmins();
+  }, [searchTerm, filterCompany, currentPage, allCompanyAdmins]);
 
   const fetchCompanies = async () => {
     try {
@@ -90,13 +95,7 @@ const CompanyAdmin = () => {
   const fetchCompanyAdmins = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: currentPage,
-        search: searchTerm || undefined,
-        company_id: filterCompany !== 'all' ? filterCompany : undefined,
-      };
-      
-      const response = await companyAdminAPI.getCompanyAdmins(params);
+      const response = await companyAdminAPI.getCompanyAdmins();
       console.log('Full API response:', response);
       console.log('Response keys:', Object.keys(response));
       console.log('Company admins response:', response.company_admins);
@@ -128,15 +127,50 @@ const CompanyAdmin = () => {
       console.log('Is array?', Array.isArray(adminsData));
       console.log('Admins length:', adminsData.length);
       
-      setCompanyAdmins(adminsData);
+      setAllCompanyAdmins(adminsData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error('Error fetching company admins:', error);
-      setCompanyAdmins([]);
+      setAllCompanyAdmins([]);
       setPagination({});
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterCompanyAdmins = () => {
+    let filtered = allCompanyAdmins;
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(admin => 
+        (admin.full_name && admin.full_name.toLowerCase().includes(searchLower)) ||
+        (admin.email && admin.email.toLowerCase().includes(searchLower)) ||
+        (admin.company_name && admin.company_name.toLowerCase().includes(searchLower)) ||
+        (admin.company_code && admin.company_code.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Apply company filter
+    if (filterCompany !== 'all') {
+      filtered = filtered.filter(admin => admin.company_id === filterCompany);
+    }
+
+    // Apply pagination
+    const itemsPerPage = 10;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedData = filtered.slice(startIndex, endIndex);
+
+    setCompanyAdmins(paginatedData);
+    setPagination({
+      ...pagination,
+      total: filtered.length,
+      current_page: currentPage,
+      per_page: itemsPerPage,
+      last_page: Math.ceil(filtered.length / itemsPerPage)
+    });
   };
 
   const handleCreateAdmin = async (e) => {
@@ -208,6 +242,16 @@ const CompanyAdmin = () => {
       console.error('Error creating company admin:', error);
       console.error('Error response data:', error.response?.data);
       console.error('Error status:', error.response?.status);
+      console.error('Error status text:', error.response?.statusText);
+      console.error('Full error config:', error.config);
+      
+      // Log the request data that was sent
+      if (error.config) {
+        console.error('Request URL:', error.config.url);
+        console.error('Request method:', error.config.method);
+        console.error('Request headers:', error.config.headers);
+        console.error('Request data:', error.config.data);
+      }
       
       // Log detailed validation errors
       if (error.response?.data?.details) {
@@ -233,7 +277,17 @@ const CompanyAdmin = () => {
       
       // Show specific message for 500 errors
       if (error.response?.status === 500) {
-        errorMessage = 'Server error occurred while creating company admin. This may be a temporary issue or the endpoint may not be fully implemented yet.';
+        errorMessage = 'Server error occurred while creating company admin. The backend endpoint may be experiencing issues. Please check the server logs for more details.';
+        console.error('500 Error Details - This is likely a backend issue:');
+        console.error('- Endpoint: POST /api/admin/company-admins');
+        console.error('- Data sent:', JSON.stringify({
+          full_name: newAdmin.full_name,
+          email: newAdmin.email,
+          phone: newAdmin.phone,
+          password: newAdmin.password,
+          company_id: newAdmin.company_id
+        }, null, 2));
+        console.error('- Server response:', error.response?.data);
       }
       
       showError(`Failed to create company admin: ${errorMessage}`);
@@ -258,8 +312,9 @@ const CompanyAdmin = () => {
     if (window.confirm('Are you sure you want to delete this company admin? This action cannot be undone.')) {
       try {
         console.log('Attempting to delete company admin with ID:', id);
-        // Note: Delete API not specified, so we'll show a message
-        showError('Delete functionality is not available for company admins.');
+        await companyAdminAPI.deleteCompanyAdmin(id);
+        showSuccess('Company admin deleted successfully');
+        fetchCompanyAdmins(); // Refresh the data
       } catch (error) {
         console.error('Error deleting company admin:', error);
         const errorMessage = error.response?.data?.message || error.message || 'Failed to delete company admin';
@@ -382,6 +437,16 @@ const CompanyAdmin = () => {
     setCurrentPage(page);
   };
 
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleFilterChange = (value) => {
+    setFilterCompany(value);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
   const getRoleColor = (role) => {
     switch (role) {
       case 'company_admin': return 'bg-blue-100 text-blue-800';
@@ -428,7 +493,7 @@ const CompanyAdmin = () => {
                 name="search"
                 id="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="block w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed sm:text-sm"
                 placeholder="Search by name, email, or company..."
               />
@@ -442,7 +507,7 @@ const CompanyAdmin = () => {
               id="company-filter"
               name="company-filter"
               value={filterCompany}
-              onChange={(e) => setFilterCompany(e.target.value)}
+              onChange={(e) => handleFilterChange(e.target.value)}
               className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-primary-500 sm:text-sm sm:leading-6"
             >
               <option value="all">All Companies</option>
@@ -602,19 +667,40 @@ const CompanyAdmin = () => {
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">1</span> to <span className="font-medium">{companyAdmins.length}</span> of{' '}
+                    Showing <span className="font-medium">{((currentPage - 1) * 10) + 1}</span> to <span className="font-medium">{Math.min(currentPage * 10, pagination.total || companyAdmins.length)}</span> of{' '}
                     <span className="font-medium">{pagination.total || companyAdmins.length}</span> results
                   </p>
                 </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <button 
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      disabled={currentPage <= 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       Previous
                     </button>
-                    <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                      1
-                    </button>
-                    <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    {Array.from({ length: Math.min(5, pagination.last_page || 1) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button 
+                      onClick={() => handlePageChange(Math.min(pagination.last_page || 1, currentPage + 1))}
+                      disabled={currentPage >= (pagination.last_page || 1)}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       Next
                     </button>
                   </nav>
