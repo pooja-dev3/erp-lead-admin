@@ -288,25 +288,25 @@ const CompanyAdminDashboard = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
-              onClick={() => window.location.href = '/visitors'}
+              onClick={() => window.location.href = '/leads'}
               className="btn btn-primary text-center"
             >
-              <UserCheck className="h-5 w-5 mr-2 inline" />
-              Check In Visitor
-            </button>
-            <button
-              onClick={() => window.location.href = '/leads'}
-              className="btn btn-secondary text-center"
-            >
               <Target className="h-5 w-5 mr-2 inline" />
-              View Leads
+              Leads
             </button>
             <button
-              onClick={() => window.location.href = '/badge-mapping'}
+              onClick={() => window.location.href = '/employees'}
               className="btn btn-secondary text-center"
             >
-              <Badge className="h-5 w-5 mr-2 inline" />
-              Badge Mapping
+              <Users className="h-5 w-5 mr-2 inline" />
+              Employee
+            </button>
+            <button
+              onClick={() => window.location.href = '/analytics'}
+              className="btn btn-secondary text-center"
+            >
+              <BarChart3 className="h-5 w-5 mr-2 inline" />
+              Analytics
             </button>
           </div>
         </div>

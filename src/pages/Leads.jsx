@@ -791,6 +791,9 @@ const Leads = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Follow Up
+                  </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -819,6 +822,22 @@ const Leads = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(lead.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {lead.follow_up_date ? (
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className={
+                            new Date(lead.follow_up_date) < new Date() ? 
+                            'text-red-600 font-medium' : 
+                            'text-gray-900'
+                          }>
+                            {new Date(lead.follow_up_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Not set</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -1104,13 +1123,14 @@ const Leads = () => {
                     <h4 className="text-md font-medium text-gray-900 mb-4">Lead Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Interest Level</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Interest Level *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Target className="h-5 w-5 text-gray-400" />
                           </div>
                           <select
                             value={newLead.interests}
+                            required
                             onChange={(e) => setNewLead({ ...newLead, interests: e.target.value })}
                             className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 appearance-none bg-white"
                           >
