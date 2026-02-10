@@ -31,7 +31,6 @@ const Employees = () => {
   const [searchTerm, setSearchTerm] = useState('');
   // For company admins, default to employee role only
   const [filterRole, setFilterRole] = useState(isCompanyAdmin ? 'employee' : 'all');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
@@ -46,10 +45,92 @@ const Employees = () => {
     phone: '',
     password: ''
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
 
   useEffect(() => {
     fetchEmployees();
-  }, [currentPage, searchTerm, filterRole, filterStatus, companyId]);
+  }, [currentPage, searchTerm, filterRole, companyId]);
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    const phoneRegex = /^[6-9]\d{9}$/;
+    return phoneRegex.test(phone);
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!newEmployee.full_name?.trim()) {
+      errors.full_name = 'Full name is required';
+    } else if (newEmployee.full_name.trim().length < 2) {
+      errors.full_name = 'Full name must be at least 2 characters';
+    }
+
+    if (!newEmployee.email?.trim()) {
+      errors.email = 'Email is required';
+    } else if (!validateEmail(newEmployee.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (!newEmployee.phone?.trim()) {
+      errors.phone = 'Phone number is required';
+    } else if (!validatePhone(newEmployee.phone)) {
+      errors.phone = 'Phone number must be 10 digits starting with 6, 7, 8, or 9';
+    }
+
+    if (!newEmployee.password?.trim()) {
+      errors.password = 'Password is required';
+    } else if (newEmployee.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleInputChange = (field, value) => {
+    setNewEmployee(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setSelectedEmployee(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (editFormErrors[field]) {
+      setEditFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const validateEditForm = () => {
+    const errors = {};
+    
+    if (!selectedEmployee?.full_name?.trim()) {
+      errors.full_name = 'Full name is required';
+    } else if (selectedEmployee.full_name.trim().length < 2) {
+      errors.full_name = 'Full name must be at least 2 characters';
+    }
+
+    if (!selectedEmployee?.email?.trim()) {
+      errors.email = 'Email is required';
+    } else if (!validateEmail(selectedEmployee.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (selectedEmployee?.phone && !validatePhone(selectedEmployee.phone)) {
+      errors.phone = 'Phone number must be 10 digits starting with 6, 7, 8, or 9';
+    }
+
+    setEditFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -58,7 +139,6 @@ const Employees = () => {
         page: currentPage,
         search: searchTerm || undefined,
         role: filterRole !== 'all' ? filterRole : undefined,
-        status: filterStatus !== 'all' ? filterStatus : undefined,
         company_id: companyId
       };
       
@@ -85,8 +165,9 @@ const Employees = () => {
 
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
-    if (!newEmployee.full_name?.trim() || !newEmployee.email?.trim()) {
-      showError('Please fill in all required fields');
+    
+    // Validate form first
+    if (!validateForm()) {
       return;
     }
 
@@ -116,6 +197,7 @@ const Employees = () => {
         phone: '',
         password: ''
       });
+      setFormErrors({});
       fetchEmployees();
     } catch (error) {
       console.error('Error creating employee:', error);
@@ -123,10 +205,41 @@ const Employees = () => {
       console.error('Error status:', error.response?.status);
       console.error('Error headers:', error.response?.headers);
       
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          'Failed to create employee';
-      showError(errorMessage);
+      // Handle specific error messages
+      if (error.response?.status === 409) {
+        showError('An employee with this email already exists');
+      } else if (error.response?.status === 400) {
+        const errorData = error.response?.data;
+        if (errorData?.errors) {
+          // Handle validation errors from backend
+          const backendErrors = {};
+          Object.keys(errorData.errors).forEach(field => {
+            backendErrors[field] = errorData.errors[field][0];
+          });
+          setFormErrors(backendErrors);
+          showError('Please correct the validation errors');
+        } else {
+          showError(errorData?.message || 'Invalid data provided');
+        }
+      } else if (error.response?.status === 403) {
+        showError('You do not have permission to create employees');
+      } else if (error.response?.status === 422) {
+        const errorData = error.response?.data;
+        if (errorData?.error?.includes('email')) {
+          setFormErrors({ email: 'This email is already registered' });
+          showError('Email already exists');
+        } else if (errorData?.error?.includes('phone')) {
+          setFormErrors({ phone: 'This phone number is already registered' });
+          showError('Phone number already exists');
+        } else {
+          showError(errorData?.error || 'Validation failed');
+        }
+      } else {
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            'Failed to create employee. Please try again.';
+        showError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -134,8 +247,9 @@ const Employees = () => {
 
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
-    if (!selectedEmployee.full_name?.trim() || !selectedEmployee.email?.trim()) {
-      showError('Please fill in all required fields');
+    
+    // Validate form first
+    if (!validateEditForm()) {
       return;
     }
 
@@ -160,14 +274,44 @@ const Employees = () => {
       showSuccess('Employee updated successfully');
       setShowEditForm(false);
       setSelectedEmployee(null);
+      setEditFormErrors({});
       fetchEmployees();
     } catch (error) {
       console.error('Error updating employee:', error);
       console.log('Error status:', error.response?.status);
       console.log('Error data:', error.response?.data);
       
-      // Handle specific permission errors
-      if (error.response?.data?.error === 'Insufficient permissions') {
+      // Handle specific error messages
+      if (error.response?.status === 409) {
+        setEditFormErrors({ email: 'This email is already registered' });
+        showError('Email already exists');
+      } else if (error.response?.status === 400) {
+        const errorData = error.response?.data;
+        if (errorData?.errors) {
+          // Handle validation errors from backend
+          const backendErrors = {};
+          Object.keys(errorData.errors).forEach(field => {
+            backendErrors[field] = errorData.errors[field][0];
+          });
+          setEditFormErrors(backendErrors);
+          showError('Please correct the validation errors');
+        } else {
+          showError(errorData?.message || 'Invalid data provided');
+        }
+      } else if (error.response?.status === 403) {
+        showError('You do not have permission to update employees');
+      } else if (error.response?.status === 422) {
+        const errorData = error.response?.data;
+        if (errorData?.error?.includes('email')) {
+          setEditFormErrors({ email: 'This email is already registered' });
+          showError('Email already exists');
+        } else if (errorData?.error?.includes('phone')) {
+          setEditFormErrors({ phone: 'This phone number is already registered' });
+          showError('Phone number already exists');
+        } else {
+          showError(errorData?.error || 'Validation failed');
+        }
+      } else if (error.response?.data?.error === 'Insufficient permissions') {
         showError('You do not have permission to update employees. Please contact your system administrator.');
       } else if (error.response?.data?.error === 'Validation failed') {
         showError('Unable to update employee due to validation errors. Please check all fields and try again.');
@@ -176,7 +320,10 @@ const Employees = () => {
       } else if (error.response?.status === 404) {
         showError('Employee update endpoints are not available. Please contact your system administrator for employee modifications.');
       } else {
-        showError('Failed to update employee');
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            'Failed to update employee. Please try again.';
+        showError(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -268,6 +415,17 @@ const Employees = () => {
           </p>
         </div>
         <div className="mt-4 flex md:ml-4 md:mt-0">
+          <div className="flex items-center bg-blue-50 px-4 py-2 rounded-lg mr-3">
+            <Users className="h-5 w-5 text-blue-600 mr-2" />
+            <div className="text-sm">
+              <div className="font-medium text-blue-900">
+                {pagination.total || employees.length} Employees
+              </div>
+              <div className="text-blue-700">
+                {employees.filter(emp => emp.is_active === true).length} Active
+              </div>
+            </div>
+          </div>
           <button
             onClick={() => setShowCreateForm(true)}
             className="btn btn-primary flex items-center"
@@ -280,7 +438,7 @@ const Employees = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <div className="relative">
@@ -309,19 +467,6 @@ const Employees = () => {
               </select>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -523,10 +668,15 @@ const Employees = () => {
                         type="text"
                         required
                         value={newEmployee.full_name}
-                        onChange={(e) => setNewEmployee({...newEmployee, full_name: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        onChange={(e) => handleInputChange('full_name', e.target.value)}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          formErrors.full_name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                         placeholder="Enter full name"
                       />
+                      {formErrors.full_name && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -534,21 +684,38 @@ const Employees = () => {
                         type="email"
                         required
                         value={newEmployee.email}
-                        onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          formErrors.email ? 'border-red-500' : 'border-gray-300'
+                        }`}
                         placeholder="Enter email"
                       />
+                      {formErrors.email && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
                       <input
                         type="tel"
                         required
+                        maxLength={10}
                         value={newEmployee.phone}
-                        onChange={(e) => setNewEmployee({...newEmployee, phone: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                        placeholder="Enter mobile number"
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                          if (value.length <= 10) {
+                            handleInputChange('phone', value);
+                          }
+                        }}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter 10-digit mobile number"
                       />
+                      {formErrors.phone && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">Enter 10-digit number starting with 6, 7, 8, or 9</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
@@ -556,10 +723,15 @@ const Employees = () => {
                         type="password"
                         required
                         value={newEmployee.password}
-                        onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                        placeholder="Enter password"
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          formErrors.password ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter password (min 6 characters)"
                       />
+                      {formErrors.password && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -606,9 +778,14 @@ const Employees = () => {
                         type="text"
                         required
                         value={selectedEmployee.full_name}
-                        onChange={(e) => setSelectedEmployee({...selectedEmployee, full_name: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        onChange={(e) => handleEditInputChange('full_name', e.target.value)}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          editFormErrors.full_name ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       />
+                      {editFormErrors.full_name && (
+                        <p className="mt-1 text-sm text-red-600">{editFormErrors.full_name}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -616,18 +793,37 @@ const Employees = () => {
                         type="email"
                         required
                         value={selectedEmployee.email}
-                        onChange={(e) => setSelectedEmployee({...selectedEmployee, email: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        onChange={(e) => handleEditInputChange('email', e.target.value)}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          editFormErrors.email ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       />
+                      {editFormErrors.email && (
+                        <p className="mt-1 text-sm text-red-600">{editFormErrors.email}</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
                       <input
                         type="tel"
-                        value={selectedEmployee.phone}
-                        onChange={(e) => setSelectedEmployee({...selectedEmployee, phone: e.target.value})}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        required
+                        maxLength={10}
+                        value={selectedEmployee.phone || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                          if (value.length <= 10) {
+                            handleEditInputChange('phone', value);
+                          }
+                        }}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                          editFormErrors.phone ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter 10-digit mobile number"
                       />
+                      {editFormErrors.phone && (
+                        <p className="mt-1 text-sm text-red-600">{editFormErrors.phone}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">Enter 10-digit number starting with 6, 7, 8, or 9 (optional)</p>
                     </div>
                   </div>
                 </div>

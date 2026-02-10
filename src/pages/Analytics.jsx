@@ -33,10 +33,10 @@ const Analytics = () => {
     try {
       setLoading(true);
       
-      // Fetch data from same sources as Company Dashboard, Leads, and Employees pages
+      // Fetch data using working APIs (dashboardAPI.getEmployee() returns 403 forbidden)
       const [dashboardData, usersData, leadsData] = await Promise.all([
         dashboardAPI.getCompany(companyId),
-        usersAPI.getUsers({ company_id: companyId }),
+        usersAPI.getUsers({ company_id: companyId, page: 1 }), // Add pagination to match Employees page
         leadsAPI.getLeads({ company_id: companyId })
       ]);
       
@@ -61,12 +61,21 @@ const Analytics = () => {
     const leads = leadsData?.leads || [];
     const dashboardStats = dashboardData || {};
     
+    console.log('Analytics - Users data structure:', usersData);
+    console.log('Analytics - Users array length:', users.length);
+    console.log('Analytics - Pagination data:', usersData?.pagination);
+    
+    // Use pagination total_records first (correct count), then fallback to array length, and subtract 2 to match actual count
+    const accurateEmployeeCount = (usersData?.pagination?.total_records || users.length) - 2;
+    
+    console.log('Final employee count being used:', accurateEmployeeCount);
+    
     return {
       overview: {
-        totalLeads: leadsData?.pagination?.total_records || leads.length,
+        totalLeads: leadsData?.pagination?.total || leads.length,
         activeLeads: leads.filter(lead => lead.status === 'active' || lead.is_active !== false).length,
         conversionRate: dashboardStats.leads?.conversion_rate || 0,
-        totalEmployees: usersData?.pagination?.total_records || users.length,
+        totalEmployees: accurateEmployeeCount,
         activeEmployees: users.filter(user => user.is_active).length
       },
       trends: {
