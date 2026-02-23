@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
+import axios from 'axios';
 import { leadsAPI, companiesAPI, visitorsAPI } from '../utils/apiService';
+import { API_BASE_URL } from '../utils/api';
 import {
   Search,
   Filter,
@@ -61,6 +63,9 @@ const Leads = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchLeads();
@@ -68,7 +73,7 @@ const Leads = () => {
     if (isPlatformAdmin) {
       fetchCompanies();
     }
-  }, [currentPage, searchTerm, selectedCompanyId]);
+  }, [currentPage, searchTerm, selectedCompanyId, dateFrom, dateTo]);
 
   const fetchLeadStats = async () => {
     try {
@@ -97,6 +102,8 @@ const Leads = () => {
       const params = {
         page: currentPage,
         search: searchTerm || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
       };
       
       // Use selectedCompanyId for platform admins, otherwise use companyId
@@ -579,6 +586,78 @@ const Leads = () => {
     setCurrentPage(page);
   };
 
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      
+      // Build query parameters from current filters
+      const params = new URLSearchParams();
+      
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+      
+      // Use selectedCompanyId for platform admins, otherwise use companyId
+      const effectiveCompanyId = isPlatformAdmin ? selectedCompanyId : companyId;
+      if (effectiveCompanyId) {
+        params.append('company_id', effectiveCompanyId);
+      }
+      
+      // Get JWT token
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      
+      // Create export URL (API_BASE_URL already includes /api)
+      const exportUrl = `${API_BASE_URL}/leads/export/csv?${params.toString()}`;
+      
+      // Create a temporary link element for download
+      const link = document.createElement('a');
+      link.href = exportUrl;
+      link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.csv`);
+      
+      // Set authorization header for the download
+      // Since we can't set headers directly on link clicks, we'll use fetch
+      const response = await fetch(exportUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+      
+      // Get the blob and create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      link.href = url;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      
+      showSuccess('CSV exported successfully');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showError('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -591,7 +670,20 @@ const Leads = () => {
             Track and manage leads generated from visitor interactions
           </p>
         </div>
-        <div className="mt-4 flex md:ml-4 md:mt-0">
+        <div className="mt-4 flex md:ml-4 md:mt-0 space-x-3">
+          <button
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            className="btn btn-secondary flex items-center"
+            title="Export current filtered leads to CSV"
+          >
+            {isExporting ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600 mr-2"></div>
+            ) : (
+              <Download className="h-5 w-5 mr-2" />
+            )}
+            Export CSV
+          </button>
           <button
             onClick={() => setShowCreateForm(true)}
             className="btn btn-primary flex items-center"
@@ -701,7 +793,7 @@ const Leads = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <div className="relative">
@@ -711,6 +803,30 @@ const Leads = () => {
                 placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
                 className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -732,10 +848,12 @@ const Leads = () => {
               </select>
             </div>
           )}
-          <div className="flex items-end">
+          <div className="flex items-end lg:col-span-4">
             <button
               onClick={() => {
                 setSearchTerm('');
+                setDateFrom('');
+                setDateTo('');
                 setCurrentPage(1);
                 if (isPlatformAdmin) {
                   setSelectedCompanyId('');
