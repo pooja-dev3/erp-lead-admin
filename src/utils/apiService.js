@@ -50,17 +50,83 @@ export const authAPI = {
 // Dashboard APIs
 export const dashboardAPI = {
   getOverview: async () => {
-    const response = await api.get('/admin/dashboard/overview');
-    return response.data;
+    try {
+      const response = await api.get('/admin/dashboard/overview');
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getOverview]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   getCompany: async (companyId) => {
-    const params = companyId ? { company_id: companyId } : {};
-    const response = await api.get('/admin/dashboard/company', { params });
-    return response.data;
+    try {
+      const params = companyId ? { company_id: companyId } : {};
+      const response = await api.get('/admin/dashboard/company', { params });
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   getEmployee: async () => {
-    const response = await api.get('/admin/dashboard/employee');
-    return response.data;
+    try {
+      const response = await api.get('/admin/dashboard/employee');
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getEmployee]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+};
+
+export const auditLogsAPI = {
+  getAuditLogs: async (params = {}) => {
+    try {
+      const response = await api.get('/admin/audit-logs', { params });
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getAuditLogs]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+};
+
+export const badgeMappingAPI = {
+  getBadgeMappings: async (params = {}) => {
+    try {
+      const response = await api.get('/admin/badge-mappings', { params });
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getBadgeMappings]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  createBadgeMapping: async (data) => {
+    try {
+      const response = await api.post('/admin/badge-mappings', data);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [createBadgeMapping]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  updateBadgeMapping: async (id, data) => {
+    try {
+      const response = await api.put(`/admin/badge-mappings/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [updateBadgeMapping]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  deleteBadgeMapping: async (id) => {
+    try {
+      const response = await api.delete(`/admin/badge-mappings/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [deleteBadgeMapping]:', error.response?.data || error.message);
+      throw error;
+    }
   },
 };
 
@@ -628,14 +694,6 @@ export const leadsAPI = {
   },
   getLeadStats: async () => {
     const response = await api.get('/leads/stats/overview');
-    return response.data;
-  },
-};
-
-// Audit Logs Management APIs
-export const auditLogsAPI = {
-  getAuditLogs: async (params = {}) => {
-    const response = await api.get('/admin/audit-logs', { params });
     return response.data;
   },
 };

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { validateForm, validationRules } from '../utils/validation';
-import { companiesAPI } from '../utils/apiService';
+import { companiesAPI, badgeMappingAPI } from '../utils/apiService';
 import {
   Badge,
   Search,
@@ -41,37 +41,21 @@ const BadgeMapping = () => {
 
   useEffect(() => {
     fetchBadgeMappings();
-  }, []);
+  }, [searchTerm, filterStatus]);
 
-  const fetchBadgeMappings = async () => {
+  const fetchBadgeMappings = async (page = 1) => {
     try {
       setLoading(true);
-      // In a real app, you would fetch badge mappings from API
-      // For now, we'll use mock data
-      setBadgeMappings([
-        {
-          id: 1,
-          badge_number: 'EMP001',
-          employee_name: 'John Doe',
-          employee_email: 'john.doe@company.com',
-          department: 'Sales',
-          role: 'Sales Manager',
-          status: 'active',
-          created_at: '2024-01-15T10:00:00Z',
-          last_used: '2024-01-30T14:30:00Z'
-        },
-        {
-          id: 2,
-          badge_number: 'EMP002',
-          employee_name: 'Jane Smith',
-          employee_email: 'jane.smith@company.com',
-          department: 'Marketing',
-          role: 'Marketing Specialist',
-          status: 'active',
-          created_at: '2024-01-16T11:00:00Z',
-          last_used: '2024-01-29T09:15:00Z'
-        }
-      ]);
+      const params = {
+        page,
+        limit: 10,
+        search: searchTerm || undefined,
+        status: filterStatus !== 'all' ? filterStatus : undefined
+      };
+      
+      const response = await badgeMappingAPI.getBadgeMappings(params);
+      setBadgeMappings(response.badge_mappings || []);
+      setPagination(response.pagination || {});
     } catch (error) {
       showError('Failed to fetch badge mappings');
     } finally {
@@ -89,18 +73,9 @@ const BadgeMapping = () => {
 
     try {
       setIsSubmitting(true);
-      // In a real app, you would call API to create badge mapping
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await badgeMappingAPI.createBadgeMapping(newMapping);
       
-      const mapping = {
-        id: badgeMappings.length + 1,
-        ...newMapping,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        last_used: null
-      };
-      
-      setBadgeMappings([mapping, ...badgeMappings]);
+      setBadgeMappings([response.badge_mapping, ...badgeMappings]);
       showSuccess('Badge mapping created successfully');
       setShowCreateForm(false);
       setNewMapping({
@@ -112,7 +87,7 @@ const BadgeMapping = () => {
       });
       setValidationErrors({});
     } catch (error) {
-      showError('Failed to create badge mapping');
+      showError(error.response?.data?.error || 'Failed to create badge mapping');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,11 +95,10 @@ const BadgeMapping = () => {
 
   const handleUpdateMapping = async (id, mappingData) => {
     try {
-      // In a real app, you would call API to update badge mapping
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await badgeMappingAPI.updateBadgeMapping(id, mappingData);
       
       setBadgeMappings(badgeMappings.map(mapping => 
-        mapping.id === id ? { ...mapping, ...mappingData } : mapping
+        mapping.id === id ? response.badge_mapping : mapping
       ));
       showSuccess('Badge mapping updated successfully');
     } catch (error) {
@@ -136,8 +110,7 @@ const BadgeMapping = () => {
     if (!confirm('Are you sure you want to delete this badge mapping?')) return;
 
     try {
-      // In a real app, you would call API to delete badge mapping
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await badgeMappingAPI.deleteBadgeMapping(id);
       
       setBadgeMappings(badgeMappings.filter(mapping => mapping.id !== id));
       showSuccess('Badge mapping deleted successfully');
@@ -154,13 +127,7 @@ const BadgeMapping = () => {
     }
   };
 
-  const filteredMappings = badgeMappings.filter(mapping => {
-    const matchesSearch = mapping.badge_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mapping.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mapping.employee_email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || mapping.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredMappings = badgeMappings;
 
   return (
     <div className="space-y-6">
