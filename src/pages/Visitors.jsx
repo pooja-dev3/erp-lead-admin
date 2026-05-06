@@ -83,6 +83,18 @@ const Visitors = () => {
     return value && value.trim().length > 0;
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  };
+
   useEffect(() => {
     fetchVisitors();
     fetchVisitorStats();
@@ -241,7 +253,9 @@ const Visitors = () => {
       setSelectedVisitor(null);
       fetchVisitors();
     } catch (error) {
-      showError(error.response?.data?.error || error.response?.data?.message || 'Failed to update visitor');
+      console.error('Error updating visitor:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to update visitor';
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -581,7 +595,7 @@ const Visitors = () => {
                       <div className="text-sm text-gray-500">{visitor.city || 'N/A'}, {visitor.country || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {visitor.created_at ? new Date(visitor.created_at).toLocaleString() : 'N/A'}
+                      {formatDate(visitor.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">

@@ -38,6 +38,19 @@ const AuditLogs = () => {
     fetchAuditLogs();
   }, [searchTerm, filterAction, filterUser, filterCompany]);
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const time = date.toLocaleTimeString();
+    
+    return `${day}/${month}/${year} ${time}`;
+  };
+
   useEffect(() => {
     fetchCompanies();
   }, []);
@@ -101,7 +114,8 @@ const AuditLogs = () => {
       }
     } catch (error) {
       console.error('Export error:', error);
-      showError(error.response?.data?.error || 'Failed to export audit logs');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to export audit logs';
+      showError(errorMessage);
     }
   };
 
@@ -271,7 +285,7 @@ const AuditLogs = () => {
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="font-mono text-xs">{new Date(log.created_at || log.timestamp).toLocaleString()}</span>
+                          <span className="font-mono text-xs">{formatDateTime(log.created_at || log.timestamp)}</span>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">

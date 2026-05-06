@@ -35,6 +35,7 @@ const Leads = () => {
   const { user, companyId, isPlatformAdmin } = useAuth();
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
+  const today = new Date().toISOString().split('T')[0];
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -88,6 +89,18 @@ const Leads = () => {
       fetchCompanies();
     }
   }, [currentPage, searchTerm, selectedCompanyId, dateFrom, dateTo]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  };
 
   const fetchLeadStats = async () => {
     try {
@@ -305,8 +318,8 @@ const Leads = () => {
       fetchLeads();
     } catch (error) {
       console.error('Error updating lead:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update lead';
-      showError(`Failed to update lead: ${errorMessage}`);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to update lead';
+      showError(errorMessage);
     }
   };
 
@@ -954,18 +967,18 @@ const Leads = () => {
                       <div className="text-sm text-gray-500">ID: {lead.company_id || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(lead.created_at).toLocaleDateString()}
+                      {formatDate(lead.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {lead.follow_up_date ? (
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                           <span className={
-                            new Date(lead.follow_up_date) < new Date() ? 
+                            new Date(lead.follow_up_date).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) ? 
                             'text-red-600 font-medium' : 
                             'text-gray-900'
                           }>
-                            {new Date(lead.follow_up_date).toLocaleDateString()}
+                            {formatDate(lead.follow_up_date)}
                           </span>
                         </div>
                       ) : (
@@ -1307,6 +1320,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="date"
+                            min={today}
                             value={newLead.follow_up_date}
                             onChange={(e) => {
                               setNewLead({ ...newLead, follow_up_date: e.target.value });
@@ -1570,6 +1584,7 @@ const Leads = () => {
                           </div>
                           <input
                             type="date"
+                            min={today}
                             value={formatDateForInput(editingLead.follow_up_date)}
                             onChange={(e) => {
                               setEditingLead({ ...editingLead, follow_up_date: e.target.value });

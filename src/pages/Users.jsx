@@ -15,6 +15,7 @@ const Users = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
@@ -48,8 +49,8 @@ const Users = () => {
     try {
       setLoading(true);
       const params = {};
-      if (searchTerm) {
-        params.search = searchTerm;
+      if (debouncedSearchTerm) {
+        params.search = debouncedSearchTerm;
       }
       if (filterRole !== 'all') {
         params.role = filterRole;
@@ -80,10 +81,18 @@ const Users = () => {
     
   };
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchUsers();
     fetchCompanies();
-  }, [searchTerm, filterRole, filterStatus, selectedCompanyId]);
+  }, [debouncedSearchTerm, filterRole, filterStatus, selectedCompanyId]);
 
   // Validation functions
   const validateEmail = (email) => {
@@ -154,7 +163,8 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      showError(error.response?.data?.message || error.response?.data?.error || 'Failed to create user');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create user';
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -206,7 +216,8 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
-      showError(error.response?.data?.message || error.response?.data?.error || 'Failed to update user');
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to update user';
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -253,7 +264,7 @@ const Users = () => {
     return 'bg-gray-100 text-gray-800';
   };
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
