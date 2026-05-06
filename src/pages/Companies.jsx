@@ -28,6 +28,7 @@ const Companies = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [newCompany, setNewCompany] = useState({
     name: '',
     company_code: '',
@@ -80,29 +81,29 @@ const Companies = () => {
   const handleCreateCompany = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(newCompany.name)) {
-      validationErrors.push('Company name is required');
+      errors.name = 'Company name is required';
     }
     
     if (!validateRequired(newCompany.company_code)) {
-      validationErrors.push('Company code is required');
+      errors.company_code = 'Company code is required';
     }
     
     if (!validateEmail(newCompany.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (newCompany.phone && !validatePhoneNumber(newCompany.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     try {
       setIsSubmitting(true);
@@ -194,29 +195,29 @@ const Companies = () => {
   const handleUpdateCompany = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(editingCompany.name)) {
-      validationErrors.push('Company name is required');
+      errors.name = 'Company name is required';
     }
     
     if (!validateRequired(editingCompany.company_code)) {
-      validationErrors.push('Company code is required');
+      errors.company_code = 'Company code is required';
     }
     
     if (!validateEmail(editingCompany.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (editingCompany.phone && !validatePhoneNumber(editingCompany.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     setIsSubmitting(true);
 
@@ -573,10 +574,14 @@ const Companies = () => {
                     type="text"
                     name="name"
                     value={editingCompany?.name || ''}
-                    onChange={(e) => setEditingCompany({ ...editingCompany, name: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    onChange={(e) => {
+                      setEditingCompany({ ...editingCompany, name: e.target.value });
+                      if (validationErrors.name) setValidationErrors({ ...validationErrors, name: '' });
+                    }}
+                    className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.name ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                     required
                   />
+                  {validationErrors.name && <p className="mt-1 text-xs text-red-600">{validationErrors.name}</p>}
                 </div>
 
                 <div>
@@ -585,10 +590,14 @@ const Companies = () => {
                     type="text"
                     name="company_code"
                     value={editingCompany?.company_code || ''}
-                    onChange={(e) => setEditingCompany({ ...editingCompany, company_code: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    onChange={(e) => {
+                      setEditingCompany({ ...editingCompany, company_code: e.target.value });
+                      if (validationErrors.company_code) setValidationErrors({ ...validationErrors, company_code: '' });
+                    }}
+                    className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.company_code ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                     required
                   />
+                  {validationErrors.company_code && <p className="mt-1 text-xs text-red-600">{validationErrors.company_code}</p>}
                 </div>
 
                 <div>
@@ -597,10 +606,14 @@ const Companies = () => {
                     type="email"
                     name="contact_email"
                     value={editingCompany?.email || ''}
-                    onChange={(e) => setEditingCompany({ ...editingCompany, email: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    onChange={(e) => {
+                      setEditingCompany({ ...editingCompany, email: e.target.value });
+                      if (validationErrors.email) setValidationErrors({ ...validationErrors, email: '' });
+                    }}
+                    className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                     required
                   />
+                  {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                 </div>
 
                 <div>
@@ -609,9 +622,13 @@ const Companies = () => {
                     type="tel"
                     name="contact_phone"
                     value={editingCompany?.phone || ''}
-                    onChange={(e) => setEditingCompany({ ...editingCompany, phone: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    onChange={(e) => {
+                      setEditingCompany({ ...editingCompany, phone: e.target.value });
+                      if (validationErrors.phone) setValidationErrors({ ...validationErrors, phone: '' });
+                    }}
+                    className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                   />
+                  {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                 </div>
 
                 <div>
@@ -682,9 +699,13 @@ const Companies = () => {
                             type="text"
                             required
                             value={newCompany.name}
-                            onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewCompany({ ...newCompany, name: e.target.value });
+                              if (validationErrors.name) setValidationErrors({ ...validationErrors, name: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.name ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                           />
+                          {validationErrors.name && <p className="mt-1 text-xs text-red-600">{validationErrors.name}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Company Code *</label>
@@ -692,9 +713,13 @@ const Companies = () => {
                             type="text"
                             required
                             value={newCompany.company_code}
-                            onChange={(e) => setNewCompany({ ...newCompany, company_code: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewCompany({ ...newCompany, company_code: e.target.value });
+                              if (validationErrors.company_code) setValidationErrors({ ...validationErrors, company_code: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.company_code ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                           />
+                          {validationErrors.company_code && <p className="mt-1 text-xs text-red-600">{validationErrors.company_code}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -702,19 +727,26 @@ const Companies = () => {
                             type="email"
                             required
                             value={newCompany.email}
-                            onChange={(e) => setNewCompany({ ...newCompany, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewCompany({ ...newCompany, email: e.target.value });
+                              if (validationErrors.email) setValidationErrors({ ...validationErrors, email: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                           />
+                          {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone *</label>
+                          <label className="block text-sm font-medium text-gray-700">Phone</label>
                           <input
                             type="tel"
-                            required
                             value={newCompany.phone}
-                            onChange={(e) => setNewCompany({ ...newCompany, phone: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewCompany({ ...newCompany, phone: e.target.value });
+                              if (validationErrors.phone) setValidationErrors({ ...validationErrors, phone: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                           />
+                          {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Status</label>

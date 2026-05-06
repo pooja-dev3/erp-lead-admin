@@ -11,20 +11,39 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Building2
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { companiesAPI } from '../utils/apiService';
 
 const AuditLogs = () => {
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('all');
   const [filterUser, setFilterUser] = useState('all');
+  const [filterCompany, setFilterCompany] = useState(location.state?.company_id || 'all');
   const [loading, setLoading] = useState(true);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [pagination, setPagination] = useState({});
 
   useEffect(() => {
     fetchAuditLogs();
-  }, [searchTerm, filterAction, filterUser]);
+  }, [searchTerm, filterAction, filterUser, filterCompany]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await companiesAPI.getCompanies();
+      setCompanies(response.companies || []);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
 
   const fetchAuditLogs = async () => {
     try {
@@ -33,6 +52,7 @@ const AuditLogs = () => {
         search: searchTerm || undefined,
         action: filterAction !== 'all' ? filterAction : undefined,
         user: filterUser !== 'all' ? filterUser : undefined,
+        company_id: filterCompany !== 'all' ? filterCompany : undefined,
       };
       
       const response = await auditLogsAPI.getAuditLogs(params);
@@ -50,11 +70,12 @@ const AuditLogs = () => {
   };
 
   const filteredLogs = auditLogs.filter(log => {
-    const matchesSearch = log.user && log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const userName = log.user_name || log.user || 'Unknown';
+    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.action && log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.resource && log.resource.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAction = filterAction === 'all' || (log.action && log.action.toLowerCase().replace(' ', '_') === filterAction);
-    const matchesUser = filterUser === 'all' || log.user === filterUser;
+    const matchesUser = filterUser === 'all' || userName === filterUser;
 
     return matchesSearch && matchesAction && matchesUser;
   });
@@ -77,8 +98,8 @@ const AuditLogs = () => {
     }
   };
 
-  const uniqueUsers = [...new Set(auditLogs.map(log => log.user))];
-  const uniqueActions = [...new Set(auditLogs.map(log => log.action.toLowerCase().replace(' ', '_')))];
+  const uniqueUsers = [...new Set(auditLogs.map(log => log.user_name || log.user || 'Unknown'))];
+  const uniqueActions = [...new Set(auditLogs.map(log => log.action ? log.action.toLowerCase().replace(' ', '_') : ''))].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -141,19 +162,19 @@ const AuditLogs = () => {
             </select>
           </div>
 
-          {/* User filter */}
+          {/* Company filter */}
           <div>
-            <label htmlFor="user-filter" className="sr-only">Filter by user</label>
+            <label htmlFor="company-filter" className="sr-only">Filter by company</label>
             <select
-              id="user-filter"
-              name="user-filter"
-              value={filterUser}
-              onChange={(e) => setFilterUser(e.target.value)}
+              id="company-filter"
+              name="company-filter"
+              value={filterCompany}
+              onChange={(e) => setFilterCompany(e.target.value)}
               className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-primary-500 sm:text-sm sm:leading-6"
             >
-              <option value="all">All Users</option>
-              {uniqueUsers.map((user) => (
-                <option key={user} value={user}>{user}</option>
+              <option value="all">All Companies</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>{company.name}</option>
               ))}
             </select>
           </div>
@@ -215,13 +236,13 @@ const AuditLogs = () => {
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="font-mono text-xs">{log.timestamp}</span>
+                          <span className="font-mono text-xs">{new Date(log.created_at || log.timestamp).toLocaleString()}</span>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         <div className="flex items-center">
                           <User className="h-4 w-4 text-gray-400 mr-2" />
-                          {log.user || 'Unknown'}
+                          {log.user_name || log.user || 'Unknown'}
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
@@ -239,7 +260,7 @@ const AuditLogs = () => {
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 font-mono">
-                        {log.ip || 'N/A'}
+                        {log.ip_address || log.ip || 'N/A'}
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
                         {log.details || 'No details available'}

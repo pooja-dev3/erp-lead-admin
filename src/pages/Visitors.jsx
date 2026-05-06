@@ -39,6 +39,7 @@ const Visitors = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [visitorStats, setVisitorStats] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [newVisitor, setNewVisitor] = useState({
@@ -50,6 +51,19 @@ const Visitors = () => {
     city: '',
     country: ''
   });
+
+  const COUNTRY_OPTIONS = ['India', 'USA', 'UK', 'UAE', 'Canada', 'Australia', 'Singapore', 'Other'];
+  const CITY_MAPPING = {
+    'India': ['Pune', 'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad', 'Other'],
+    'USA': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'Other'],
+    'UK': ['London', 'Birmingham', 'Manchester', 'Glasgow', 'Liverpool', 'Other'],
+    'UAE': ['Dubai', 'Abu Dhabi', 'Sharjah', 'Other'],
+    'Canada': ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Other'],
+    'Australia': ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Other'],
+    'Singapore': ['Singapore', 'Other'],
+    'Other': ['Other']
+  };
+
 
   // Validation functions
   const validateEmail = (email) => {
@@ -146,25 +160,25 @@ const Visitors = () => {
   const handleCreateVisitor = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(newVisitor.full_name)) {
-      validationErrors.push('Full name is required');
+      errors.full_name = 'Full name is required';
     }
     
     if (!validateEmail(newVisitor.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (!validatePhone(newVisitor.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     try {
       setIsSubmitting(true);
@@ -187,7 +201,10 @@ const Visitors = () => {
       });
       fetchVisitors();
     } catch (error) {
-      showError('Failed to check in visitor');
+      console.error('Error checking in visitor:', error);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to check in visitor';
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -196,25 +213,25 @@ const Visitors = () => {
   const handleUpdateVisitor = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(selectedVisitor.full_name)) {
-      validationErrors.push('Full name is required');
+      errors.full_name = 'Full name is required';
     }
     
     if (!validateEmail(selectedVisitor.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (!validatePhone(selectedVisitor.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     try {
       setIsSubmitting(true);
@@ -224,7 +241,7 @@ const Visitors = () => {
       setSelectedVisitor(null);
       fetchVisitors();
     } catch (error) {
-      showError('Failed to update visitor');
+      showError(error.response?.data?.error || error.response?.data?.message || 'Failed to update visitor');
     } finally {
       setIsSubmitting(false);
     }
@@ -679,10 +696,14 @@ const Visitors = () => {
                             type="text"
                             required
                             value={newVisitor.full_name}
-                            onChange={(e) => setNewVisitor({ ...newVisitor, full_name: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewVisitor({ ...newVisitor, full_name: e.target.value });
+                              if (validationErrors.full_name) setValidationErrors({ ...validationErrors, full_name: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.full_name ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter visitor's full name"
                           />
+                          {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -690,10 +711,14 @@ const Visitors = () => {
                             type="email"
                             required
                             value={newVisitor.email}
-                            onChange={(e) => setNewVisitor({ ...newVisitor, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewVisitor({ ...newVisitor, email: e.target.value });
+                              if (validationErrors.email) setValidationErrors({ ...validationErrors, email: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter email address"
                           />
+                          {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Phone *</label>
@@ -701,10 +726,14 @@ const Visitors = () => {
                             type="tel"
                             required
                             value={newVisitor.phone}
-                            onChange={(e) => setNewVisitor({ ...newVisitor, phone: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewVisitor({ ...newVisitor, phone: e.target.value });
+                              if (validationErrors.phone) setValidationErrors({ ...validationErrors, phone: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter phone number"
                           />
+                          {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Organization</label>
@@ -727,24 +756,34 @@ const Visitors = () => {
                           />
                         </div>
                         <div>
+                          <label className="block text-sm font-medium text-gray-700">Country</label>
+                          <select
+                            value={newVisitor.country}
+                            onChange={(e) => {
+                              const country = e.target.value;
+                              setNewVisitor({ ...newVisitor, country, city: '' });
+                            }}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          >
+                            <option value="">Select Country</option>
+                            {COUNTRY_OPTIONS.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">City</label>
-                          <input
-                            type="text"
+                          <select
                             value={newVisitor.city}
                             onChange={(e) => setNewVisitor({ ...newVisitor, city: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            placeholder="Enter city"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Country</label>
-                          <input
-                            type="text"
-                            value={newVisitor.country}
-                            onChange={(e) => setNewVisitor({ ...newVisitor, country: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            placeholder="Enter country"
-                          />
+                            disabled={!newVisitor.country}
+                          >
+                            <option value="">Select City</option>
+                            {newVisitor.country && CITY_MAPPING[newVisitor.country]?.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -795,10 +834,14 @@ const Visitors = () => {
                             type="text"
                             required
                             value={selectedVisitor.full_name || ''}
-                            onChange={(e) => setSelectedVisitor({ ...selectedVisitor, full_name: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setSelectedVisitor({ ...selectedVisitor, full_name: e.target.value });
+                              if (validationErrors.full_name) setValidationErrors({ ...validationErrors, full_name: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.full_name ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter visitor's full name"
                           />
+                          {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -806,10 +849,14 @@ const Visitors = () => {
                             type="email"
                             required
                             value={selectedVisitor.email || ''}
-                            onChange={(e) => setSelectedVisitor({ ...selectedVisitor, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setSelectedVisitor({ ...selectedVisitor, email: e.target.value });
+                              if (validationErrors.email) setValidationErrors({ ...validationErrors, email: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter email address"
                           />
+                          {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Phone *</label>
@@ -817,10 +864,14 @@ const Visitors = () => {
                             type="tel"
                             required
                             value={selectedVisitor.phone || ''}
-                            onChange={(e) => setSelectedVisitor({ ...selectedVisitor, phone: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setSelectedVisitor({ ...selectedVisitor, phone: e.target.value });
+                              if (validationErrors.phone) setValidationErrors({ ...validationErrors, phone: '' });
+                            }}
+                            className={`mt-1 block w-full rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-300'}`}
                             placeholder="Enter phone number"
                           />
+                          {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Organization</label>
@@ -843,24 +894,34 @@ const Visitors = () => {
                           />
                         </div>
                         <div>
+                          <label className="block text-sm font-medium text-gray-700">Country</label>
+                          <select
+                            value={selectedVisitor.country || ''}
+                            onChange={(e) => {
+                              const country = e.target.value;
+                              setSelectedVisitor({ ...selectedVisitor, country, city: '' });
+                            }}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          >
+                            <option value="">Select Country</option>
+                            {COUNTRY_OPTIONS.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">City</label>
-                          <input
-                            type="text"
+                          <select
                             value={selectedVisitor.city || ''}
                             onChange={(e) => setSelectedVisitor({ ...selectedVisitor, city: e.target.value })}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            placeholder="Enter city"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Country</label>
-                          <input
-                            type="text"
-                            value={selectedVisitor.country || ''}
-                            onChange={(e) => setSelectedVisitor({ ...selectedVisitor, country: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            placeholder="Enter country"
-                          />
+                            disabled={!selectedVisitor.country}
+                          >
+                            <option value="">Select City</option>
+                            {selectedVisitor.country && CITY_MAPPING[selectedVisitor.country]?.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>

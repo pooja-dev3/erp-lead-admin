@@ -6,7 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 
 import { useAuth } from '../contexts/AuthContext';
 
-import { companiesAPI } from '../utils/apiService';
+import { companiesAPI, auditLogsAPI } from '../utils/apiService';
 
 import {
 
@@ -57,8 +57,9 @@ const CompanyDetail = () => {
   const { user } = useAuth(); // Get current user info
 
   const [company, setCompany] = useState(null);
-
   const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(true);
 
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -80,27 +81,24 @@ const CompanyDetail = () => {
 
 
 
-  // Check if user has platform admin permissions
-
   const isPlatformAdmin = user?.role === 'platform_admin';
 
-
-
-  // Placeholder for audit logs - would be fetched from API
-
-  const companyAuditLogs = [
-
-    { id: 1, timestamp: new Date().toISOString(), action: 'Company viewed', resource: 'Company Details', status: 'success', details: `Viewed company details for ${id}` }
-
-  ];
-
-
-
   useEffect(() => {
-
     fetchCompanyDetails();
-
+    fetchCompanyAuditLogs();
   }, [id]);
+
+  const fetchCompanyAuditLogs = async () => {
+    try {
+      setLogsLoading(true);
+      const response = await auditLogsAPI.getAuditLogs({ company_id: id, limit: 10 });
+      setAuditLogs(response.audit_logs || []);
+    } catch (error) {
+      console.error('Failed to fetch company audit logs:', error);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
 
 
@@ -855,113 +853,8 @@ const CompanyDetail = () => {
 
 
 
-      {/* Registration QR Preview Section */}
+      {/* Registration QR Preview Section - Hidden as per request */}
 
-      <div className="card">
-
-        <h2 className="text-lg font-medium text-gray-900 mb-6 flex items-center">
-
-          <QrCode className="h-5 w-5 mr-2 text-gray-500" />
-
-          Registration QR Code
-
-        </h2>
-
-
-
-        <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
-
-          <div className="flex-shrink-0">
-
-            <div className="w-48 h-48 bg-gray-100 border-2 border-gray-200 rounded-lg flex items-center justify-center">
-
-              <div className="text-center">
-
-                <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-2" />
-
-                <p className="text-xs text-gray-500">QR Code Preview</p>
-
-                <p className="text-xs text-gray-400 mt-1">Interactive QR would be here</p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-
-          <div className="flex-1 space-y-4">
-
-            <div>
-
-              <h3 className="text-sm font-medium text-gray-900">QR Code Details</h3>
-
-              <div className="mt-2 space-y-2">
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600">Company:</span>
-
-                  <span className="font-medium">{company.name}</span>
-
-                </div>
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600">Domain:</span>
-
-                  <span className="font-medium">{company.domain}</span>
-
-                </div>
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600">Generated:</span>
-
-                  <span className="font-medium">{new Date().toLocaleDateString('en-GB')}</span>
-
-                </div>
-
-                <div className="flex justify-between text-sm">
-
-                  <span className="text-gray-600">Status:</span>
-
-                  <span className="font-medium text-green-600">Active</span>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-
-            <div className="flex space-x-3">
-
-              <button className="btn btn-primary text-sm">
-
-                <QrCode className="h-4 w-4 mr-2" />
-
-                Regenerate QR
-
-              </button>
-
-              <button className="btn btn-secondary text-sm">
-
-                <Eye className="h-4 w-4 mr-2" />
-
-                Preview Registration
-
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
 
 
 
@@ -1022,69 +915,54 @@ const CompanyDetail = () => {
             </thead>
 
             <tbody className="divide-y divide-gray-200 bg-white">
-
-              {companyAuditLogs.slice(0, 10).map((log) => (
-
-                <tr key={log.id} className="hover:bg-gray-50">
-
-                  <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">
-
-                    <div className="flex items-center">
-
-                      <Clock className="h-4 w-4 text-gray-400 mr-2" />
-
-                      {new Date(log.timestamp).toLocaleString()}
-
+              {logsLoading ? (
+                <tr>
+                  <td colSpan="5" className="py-4 text-center text-sm text-gray-500">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
+                      Loading logs...
                     </div>
-
                   </td>
-
-                  <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
-
-                    {log.action}
-
-                  </td>
-
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-
-                    {log.resource}
-
-                  </td>
-
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-
-                    <div className="flex items-center">
-
-                      {getAuditLogStatusIcon(log.status)}
-
-                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-
-                        log.status === 'success' ? 'bg-green-100 text-green-800' :
-
-                        log.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-
-                        'bg-red-100 text-red-800'
-
-                      }`}>
-
-                        {log.status}
-
-                      </span>
-
-                    </div>
-
-                  </td>
-
-                  <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
-
-                    {log.details}
-
-                  </td>
-
                 </tr>
-
-              ))}
-
+              ) : auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-4 text-center text-sm text-gray-500">
+                    No audit logs found for this company.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                        {new Date(log.created_at || log.timestamp).toLocaleString()}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-gray-900">
+                      {log.action}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                      {log.resource}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-sm">
+                      <div className="flex items-center">
+                        {getAuditLogStatusIcon(log.status)}
+                        <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          log.status === 'success' ? 'bg-green-100 text-green-800' :
+                          log.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {log.details}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
 
           </table>
@@ -1094,15 +972,13 @@ const CompanyDetail = () => {
 
 
         <div className="mt-4 text-center">
-
-          <button className="btn btn-secondary text-sm">
-
+          <button 
+            onClick={() => navigate('/audit-logs', { state: { company_id: id } })}
+            className="btn btn-secondary text-sm"
+          >
             <FileText className="h-4 w-4 mr-2" />
-
             View All Audit Logs
-
           </button>
-
         </div>
 
       </div>

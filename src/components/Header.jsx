@@ -1,18 +1,22 @@
-import { Bell, Search, User, Menu, X, ChevronDown, LogOut, Building2, Users, ArrowRight } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { leadsAPI, companiesAPI } from '../utils/apiService';
+import { Bell, Search, User, Menu, X, ChevronDown, LogOut, Building2, Users, ArrowRight, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { leadsAPI, companiesAPI, auditLogsAPI } from '../utils/apiService';
 
 const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const dropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
   const searchRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -20,6 +24,9 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsProfileDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
       }
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSearchResults(false);
@@ -29,6 +36,34 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch recent activity as notifications
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await auditLogsAPI.getAuditLogs({ limit: 5 });
+      if (response.audit_logs) {
+        setNotifications(response.audit_logs);
+        // For demo purposes, count everything as unread initially
+        setUnreadCount(response.audit_logs.length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const handleNotificationClick = () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+    if (!isNotificationsOpen) {
+      setUnreadCount(0); // Mark as read when opening
+    }
+  };
 
   // Search functionality
   const handleSearch = async (query) => {
@@ -194,13 +229,79 @@ const Header = ({ onMobileMenuToggle, isMobileMenuOpen }) => {
           {/* Right side - User menu and notifications */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <button
-              type="button"
-              className="rounded-full bg-white p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            >
-              <span className="sr-only">View notifications</span>
-              <Bell className="h-5 w-5" aria-hidden="true" />
-            </button>
+            <div className="relative" ref={notificationsRef}>
+              <button
+                type="button"
+                onClick={handleNotificationClick}
+                className="relative rounded-full bg-white p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              >
+                <span className="sr-only">View notifications</span>
+                <Bell className="h-5 w-5" aria-hidden="true" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 z-10 mt-2 w-80 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
+                    <button 
+                      onClick={() => navigate('/audit-logs')}
+                      className="text-xs text-primary-600 hover:text-primary-500 font-medium"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map((notif) => (
+                        <div 
+                          key={notif.id} 
+                          className="px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer"
+                          onClick={() => {
+                            setIsNotificationsOpen(false);
+                            navigate('/audit-logs');
+                          }}
+                        >
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {notif.status === 'success' ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : notif.status === 'error' ? (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                              )}
+                            </div>
+                            <div className="ml-3 flex-1">
+                              <p className="text-sm text-gray-900 font-medium leading-none">
+                                {notif.action}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {notif.details}
+                              </p>
+                              <div className="flex items-center mt-1">
+                                <Clock className="h-3 w-3 text-gray-400 mr-1" />
+                                <span className="text-[10px] text-gray-400">
+                                  {new Date(notif.created_at).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-8 text-center text-gray-500">
+                        <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm">No new notifications</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile dropdown */}
             <div className="relative" ref={dropdownRef}>

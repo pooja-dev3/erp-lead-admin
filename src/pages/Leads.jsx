@@ -42,6 +42,7 @@ const Leads = () => {
   const [pagination, setPagination] = useState({});
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [companies, setCompanies] = useState([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState(companyId || '');
   const [createLeadCompanyId, setCreateLeadCompanyId] = useState(''); // Separate state for create modal
@@ -58,6 +59,19 @@ const Leads = () => {
     notes: '',
     follow_up_date: ''
   });
+
+  const COUNTRY_OPTIONS = ['India', 'USA', 'UK', 'UAE', 'Canada', 'Australia', 'Singapore', 'Other'];
+  const CITY_MAPPING = {
+    'India': ['Pune', 'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad', 'Other'],
+    'USA': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'Other'],
+    'UK': ['London', 'Birmingham', 'Manchester', 'Glasgow', 'Liverpool', 'Other'],
+    'UAE': ['Dubai', 'Abu Dhabi', 'Sharjah', 'Other'],
+    'Canada': ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Other'],
+    'Australia': ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Other'],
+    'Singapore': ['Singapore', 'Other'],
+    'Other': ['Other']
+  };
+
   const [searchPhone, setSearchPhone] = useState('');
   const [searchedVisitor, setSearchedVisitor] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -182,34 +196,33 @@ const Leads = () => {
   const handleCreateLead = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateName(newLead.full_name)) {
-      validationErrors.push('Full name must be at least 2 characters long');
+      errors.full_name = 'Full name must be at least 2 characters long';
     }
     
     if (!validateEmail(newLead.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (!validatePhone(newLead.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
     if (!validateFollowUpDate(newLead.follow_up_date)) {
-      validationErrors.push('Follow-up date is required and must be today or in the future');
+      errors.follow_up_date = 'Follow-up date is required and must be today or in the future';
     }
     
-    // Platform admin specific validation
     if (isPlatformAdmin && !createLeadCompanyId) {
-      validationErrors.push('Please select a company');
+      errors.company_id = 'Please select a company';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     try {
       setIsSubmitting(true);
@@ -275,7 +288,9 @@ const Leads = () => {
       fetchLeads();
     } catch (error) {
       console.error('Error creating lead:', error);
-      showError('Failed to create lead');
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to create lead';
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -338,29 +353,29 @@ const Leads = () => {
   const handleUpdateLeadSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateName(editingLead.visitor_name)) {
-      validationErrors.push('Full name must be at least 2 characters long');
+      errors.full_name = 'Full name must be at least 2 characters long';
     }
     
     if (!validateEmail(editingLead.visitor_email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (!validatePhone(editingLead.visitor_phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
     if (!validateFollowUpDate(editingLead.follow_up_date)) {
-      validationErrors.push('Follow-up date is required and must be today or in the future');
+      errors.follow_up_date = 'Follow-up date is required and must be today or in the future';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     try {
       setIsSubmitting(true);
@@ -517,7 +532,7 @@ const Leads = () => {
       console.error('Error response data:', error.response?.data);
       console.error('Error status:', error.response?.status);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to update lead';
-      showError(`Failed to update lead: ${errorMessage}`);
+      showError(error.response?.data?.error || error.response?.data?.message || 'Failed to update lead');
     } finally {
       setIsSubmitting(false);
     }
@@ -1134,12 +1149,16 @@ const Leads = () => {
                           <input
                             type="tel"
                             value={newLead.phone}
-                            onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, phone: e.target.value });
+                              if (validationErrors.phone) setValidationErrors({ ...validationErrors, phone: '' });
+                            }}
                             placeholder="Phone number"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.phone ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                             required
                           />
                         </div>
+                        {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
@@ -1150,12 +1169,16 @@ const Leads = () => {
                           <input
                             type="text"
                             value={newLead.full_name}
-                            onChange={(e) => setNewLead({ ...newLead, full_name: e.target.value })}
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, full_name: e.target.value });
+                              if (validationErrors.full_name) setValidationErrors({ ...validationErrors, full_name: '' });
+                            }}
                             placeholder="Full name"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.full_name ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                             required
                           />
                         </div>
+                        {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
@@ -1166,12 +1189,16 @@ const Leads = () => {
                           <input
                             type="email"
                             value={newLead.email}
-                            onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, email: e.target.value });
+                              if (validationErrors.email) setValidationErrors({ ...validationErrors, email: '' });
+                            }}
                             placeholder="Email address"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.email ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                             required
                           />
                         </div>
+                        {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
@@ -1204,33 +1231,43 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <MapPin className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            value={newLead.city}
-                            onChange={(e) => setNewLead({ ...newLead, city: e.target.value })}
-                            placeholder="City"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                          />
-                        </div>
-                      </div>
-                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Globe className="h-5 w-5 text-gray-400" />
                           </div>
-                          <input
-                            type="text"
+                          <select
                             value={newLead.country}
-                            onChange={(e) => setNewLead({ ...newLead, country: e.target.value })}
-                            placeholder="Country"
+                            onChange={(e) => {
+                              const country = e.target.value;
+                              setNewLead({ ...newLead, country, city: '' });
+                            }}
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                          />
+                          >
+                            <option value="">Select Country</option>
+                            {COUNTRY_OPTIONS.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <MapPin className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <select
+                            value={newLead.city}
+                            onChange={(e) => setNewLead({ ...newLead, city: e.target.value })}
+                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            disabled={!newLead.country}
+                          >
+                            <option value="">Select City</option>
+                            {newLead.country && CITY_MAPPING[newLead.country]?.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -1271,10 +1308,15 @@ const Leads = () => {
                           <input
                             type="date"
                             value={newLead.follow_up_date}
-                            onChange={(e) => setNewLead({ ...newLead, follow_up_date: e.target.value })}
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, follow_up_date: e.target.value });
+                              if (validationErrors.follow_up_date) setValidationErrors({ ...validationErrors, follow_up_date: '' });
+                            }}
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.follow_up_date ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
+                            required
                           />
                         </div>
+                        {validationErrors.follow_up_date && <p className="mt-1 text-xs text-red-600">{validationErrors.follow_up_date}</p>}
                       </div>
                     </div>
                     <div className="mt-6">
@@ -1300,8 +1342,11 @@ const Leads = () => {
                       <label className="block text-sm font-medium text-gray-700">Company</label>
                       <select
                         value={createLeadCompanyId}
-                        onChange={(e) => setCreateLeadCompanyId(e.target.value)}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                        onChange={(e) => {
+                          setCreateLeadCompanyId(e.target.value);
+                          if (validationErrors.company_id) setValidationErrors({ ...validationErrors, company_id: '' });
+                        }}
+                        className={`mt-1 block w-full border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.company_id ? 'border-red-300' : 'border-gray-300'}`}
                         required
                       >
                         <option value="">Select a company</option>
@@ -1311,6 +1356,7 @@ const Leads = () => {
                           </option>
                         ))}
                       </select>
+                      {validationErrors.company_id && <p className="mt-1 text-xs text-red-600">{validationErrors.company_id}</p>}
                     </div>
                   )}
 
@@ -1449,33 +1495,43 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <MapPin className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            value={editingLead.visitor_city || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_city: e.target.value })}
-                            placeholder="City"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                          />
-                        </div>
-                      </div>
-                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Globe className="h-5 w-5 text-gray-400" />
                           </div>
-                          <input
-                            type="text"
+                          <select
                             value={editingLead.visitor_country || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_country: e.target.value })}
-                            placeholder="Country"
+                            onChange={(e) => {
+                              const country = e.target.value;
+                              setEditingLead({ ...editingLead, visitor_country: country, visitor_city: '' });
+                            }}
                             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                          />
+                          >
+                            <option value="">Select Country</option>
+                            {COUNTRY_OPTIONS.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <MapPin className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <select
+                            value={editingLead.visitor_city || ''}
+                            onChange={(e) => setEditingLead({ ...editingLead, visitor_city: e.target.value })}
+                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            disabled={!editingLead.visitor_country}
+                          >
+                            <option value="">Select City</option>
+                            {editingLead.visitor_country && CITY_MAPPING[editingLead.visitor_country]?.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -1515,10 +1571,14 @@ const Leads = () => {
                           <input
                             type="date"
                             value={formatDateForInput(editingLead.follow_up_date)}
-                            onChange={(e) => setEditingLead({ ...editingLead, follow_up_date: e.target.value })}
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            onChange={(e) => {
+                              setEditingLead({ ...editingLead, follow_up_date: e.target.value });
+                              if (validationErrors.follow_up_date) setValidationErrors({ ...validationErrors, follow_up_date: '' });
+                            }}
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.follow_up_date ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           />
                         </div>
+                        {validationErrors.follow_up_date && <p className="mt-1 text-xs text-red-600">{validationErrors.follow_up_date}</p>}
                       </div>
                     </div>
                     <div className="mt-6">

@@ -22,6 +22,7 @@ const Users = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const [newUser, setNewUser] = useState({
     full_name: '',
     email: '',
@@ -106,30 +107,35 @@ const Users = () => {
     e.preventDefault();
     
     // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(newUser.full_name)) {
-      validationErrors.push('Full name is required');
+      errors.full_name = 'Full name is required';
     }
     
     if (!validateEmail(newUser.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (newUser.phone && !validatePhone(newUser.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
     if (!validateRequired(newUser.password)) {
-      validationErrors.push('Password is required');
+      errors.password = 'Password is required';
     } else if (newUser.password.length < 6) {
-      validationErrors.push('Password must be at least 6 characters long');
+      errors.password = 'Password must be at least 6 characters long';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    if (newUser.role !== 'platform_admin' && !validateRequired(newUser.company_id)) {
+      errors.company_id = 'Please select a company';
+    }
+
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     setIsSubmitting(true);
 
@@ -148,7 +154,7 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      showError('Failed to create user');
+      showError(error.response?.data?.message || error.response?.data?.error || 'Failed to create user');
     } finally {
       setIsSubmitting(false);
     }
@@ -158,25 +164,29 @@ const Users = () => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     
-    // Validate all required fields
-    const validationErrors = [];
+    const errors = {};
     
     if (!validateRequired(selectedUser.full_name)) {
-      validationErrors.push('Full name is required');
+      errors.full_name = 'Full name is required';
     }
     
     if (!validateEmail(selectedUser.email)) {
-      validationErrors.push('Please enter a valid email address');
+      errors.email = 'Please enter a valid email address';
     }
     
     if (selectedUser.phone && !validatePhone(selectedUser.phone)) {
-      validationErrors.push('Please enter a valid phone number (exactly 10 digits)');
+      errors.phone = 'Phone number must be exactly 10 digits';
     }
     
-    if (validationErrors.length > 0) {
-      showError(validationErrors.join('; '));
+    if (selectedUser.role !== 'platform_admin' && !validateRequired(selectedUser.company_id)) {
+      errors.company_id = 'Please select a company';
+    }
+
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
+
 
     setIsSubmitting(true);
 
@@ -186,7 +196,8 @@ const Users = () => {
         full_name: selectedUser.full_name,
         email: selectedUser.email,
         phone: selectedUser.phone,
-        role: selectedUser.role
+        role: selectedUser.role,
+        company_id: selectedUser.company_id
       };
       await usersAPI.updateUser(selectedUser.id, updateData);
       showSuccess('User updated successfully');
@@ -195,7 +206,7 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
-      showError('Failed to update user');
+      showError(error.response?.data?.message || error.response?.data?.error || 'Failed to update user');
     } finally {
       setIsSubmitting(false);
     }
@@ -442,10 +453,14 @@ const Users = () => {
                           type="text"
                           required
                           value={newUser.full_name}
-                          onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setNewUser({...newUser, full_name: e.target.value});
+                            if (validationErrors.full_name) setValidationErrors({...validationErrors, full_name: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.full_name ? 'border-red-300' : 'border-gray-300'}`}
                           placeholder="Enter full name"
                         />
+                        {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -453,10 +468,14 @@ const Users = () => {
                           type="email"
                           required
                           value={newUser.email}
-                          onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setNewUser({...newUser, email: e.target.value});
+                            if (validationErrors.email) setValidationErrors({...validationErrors, email: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300' : 'border-gray-300'}`}
                           placeholder="Enter email"
                         />
+                        {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -465,10 +484,14 @@ const Users = () => {
                         <input
                           type="tel"
                           value={newUser.phone}
-                          onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setNewUser({...newUser, phone: e.target.value});
+                            if (validationErrors.phone) setValidationErrors({...validationErrors, phone: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300' : 'border-gray-300'}`}
                           placeholder="Enter phone number"
                         />
+                        {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
@@ -476,10 +499,14 @@ const Users = () => {
                           type="password"
                           required
                           value={newUser.password}
-                          onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setNewUser({...newUser, password: e.target.value});
+                            if (validationErrors.password) setValidationErrors({...validationErrors, password: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.password ? 'border-red-300' : 'border-gray-300'}`}
                           placeholder="Enter password"
                         />
+                        {validationErrors.password && <p className="mt-1 text-xs text-red-600">{validationErrors.password}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -488,7 +515,10 @@ const Users = () => {
                         <select
                           required
                           value={newUser.role}
-                          onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                          onChange={(e) => {
+                            setNewUser({...newUser, role: e.target.value});
+                            if (validationErrors.role) setValidationErrors({...validationErrors, role: ''});
+                          }}
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                           <option value="employee">Employee</option>
@@ -497,11 +527,16 @@ const Users = () => {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Company {newUser.role !== 'platform_admin' && <span className="text-red-500">*</span>}
+                        </label>
                         <select
                           value={newUser.company_id}
-                          onChange={(e) => setNewUser({...newUser, company_id: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setNewUser({...newUser, company_id: e.target.value});
+                            if (validationErrors.company_id) setValidationErrors({...validationErrors, company_id: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.company_id ? 'border-red-300' : 'border-gray-300'}`}
                         >
                           <option value="">Select a company</option>
                           {companies.map((company) => (
@@ -510,6 +545,7 @@ const Users = () => {
                             </option>
                           ))}
                         </select>
+                        {validationErrors.company_id && <p className="mt-1 text-xs text-red-600">{validationErrors.company_id}</p>}
                       </div>
                     </div>
                   </div>
@@ -558,9 +594,13 @@ const Users = () => {
                           type="text"
                           required
                           value={selectedUser.full_name}
-                          onChange={(e) => setSelectedUser({...selectedUser, full_name: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setSelectedUser({...selectedUser, full_name: e.target.value});
+                            if (validationErrors.full_name) setValidationErrors({...validationErrors, full_name: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.full_name ? 'border-red-300' : 'border-gray-300'}`}
                         />
+                        {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -568,9 +608,13 @@ const Users = () => {
                           type="email"
                           required
                           value={selectedUser.email}
-                          onChange={(e) => setSelectedUser({...selectedUser, email: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setSelectedUser({...selectedUser, email: e.target.value});
+                            if (validationErrors.email) setValidationErrors({...validationErrors, email: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.email ? 'border-red-300' : 'border-gray-300'}`}
                         />
+                        {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -579,16 +623,23 @@ const Users = () => {
                         <input
                           type="tel"
                           value={selectedUser.phone}
-                          onChange={(e) => setSelectedUser({...selectedUser, phone: e.target.value})}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          onChange={(e) => {
+                            setSelectedUser({...selectedUser, phone: e.target.value});
+                            if (validationErrors.phone) setValidationErrors({...validationErrors, phone: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.phone ? 'border-red-300' : 'border-gray-300'}`}
                         />
+                        {validationErrors.phone && <p className="mt-1 text-xs text-red-600">{validationErrors.phone}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
                         <select
                           required
                           value={selectedUser.role}
-                          onChange={(e) => setSelectedUser({...selectedUser, role: e.target.value})}
+                          onChange={(e) => {
+                            setSelectedUser({...selectedUser, role: e.target.value});
+                            if (validationErrors.role) setValidationErrors({...validationErrors, role: ''});
+                          }}
                           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                         >
                           <option value="employee">Employee</option>
@@ -597,7 +648,30 @@ const Users = () => {
                         </select>
                       </div>
                     </div>
+                    {selectedUser.role !== 'platform_admin' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+                        <select
+                          required
+                          value={selectedUser.company_id}
+                          onChange={(e) => {
+                            setSelectedUser({...selectedUser, company_id: e.target.value});
+                            if (validationErrors.company_id) setValidationErrors({...validationErrors, company_id: ''});
+                          }}
+                          className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${validationErrors.company_id ? 'border-red-300' : 'border-gray-300'}`}
+                        >
+                          <option value="">Select a company</option>
+                          {companies.map((company) => (
+                            <option key={company.id} value={company.id}>
+                              {company.name}
+                            </option>
+                          ))}
+                        </select>
+                        {validationErrors.company_id && <p className="mt-1 text-xs text-red-600">{validationErrors.company_id}</p>}
+                      </div>
+                    )}
                   </div>
+
                 </div>
                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                   <button
