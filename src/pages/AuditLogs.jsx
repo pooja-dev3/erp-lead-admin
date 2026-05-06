@@ -105,16 +105,7 @@ const AuditLogs = () => {
     }
   };
 
-  const filteredLogs = auditLogs.filter(log => {
-    const userName = log.user_name || log.user || 'Unknown';
-    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.action && log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.resource && log.resource.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAction = filterAction === 'all' || (log.action && log.action.toLowerCase().replace(' ', '_') === filterAction);
-    const matchesUser = filterUser === 'all' || userName === filterUser;
-
-    return matchesSearch && matchesAction && matchesUser;
-  });
+  const filteredLogs = auditLogs;
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -140,7 +131,7 @@ const AuditLogs = () => {
   };
 
   const uniqueUsers = [...new Set(auditLogs.map(log => log.user_name || log.user || 'Unknown'))];
-  const uniqueActions = [...new Set(auditLogs.map(log => log.action ? log.action.toLowerCase().replace(' ', '_') : ''))].filter(Boolean);
+  const uniqueActions = [...new Set(auditLogs.map(log => log.action))].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -200,7 +191,7 @@ const AuditLogs = () => {
               <option value="all">All Actions</option>
               {uniqueActions.map((action) => (
                 <option key={action} value={action}>
-                  {action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {action.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
                 </option>
               ))}
             </select>
