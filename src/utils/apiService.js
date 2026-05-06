@@ -1,3 +1,4 @@
+// API Service Version: 1.0.1
 import axios from 'axios';
 import { API_BASE_URL } from './api';
 
@@ -86,6 +87,18 @@ export const auditLogsAPI = {
       return response.data;
     } catch (error) {
       console.error('API Error [getAuditLogs]:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+  exportAuditLogs: async (params = {}) => {
+    try {
+      const response = await api.get('/admin/audit-logs/export', { 
+        params,
+        responseType: 'blob' 
+      });
+      return response;
+    } catch (error) {
+      console.error('API Error [exportAuditLogs]:', error.response?.data || error.message);
       throw error;
     }
   },
