@@ -133,16 +133,21 @@ export const badgeMappingAPI = {
 // Users Management APIs
 export const usersAPI = {
   getUsers: async (params = {}) => {
-    // If role parameter is 'employee', use the specific endpoint
-    if (params.role === 'employee') {
-      // Remove role from params since it's in the URL
-      const { role, ...otherParams } = params;
-      const response = await api.get('/admin/users?role=employee', { params: otherParams });
+    try {
+      // If role parameter is 'employee', use the specific endpoint
+      if (params.role === 'employee') {
+        // Remove role from params since it's in the URL
+        const { role, ...otherParams } = params;
+        const response = await api.get('/admin/users?role=employee', { params: otherParams });
+        return response.data;
+      }
+      // For other cases, use the general endpoint
+      const response = await api.get('/admin/users', { params });
       return response.data;
+    } catch (error) {
+      console.error('API Error [getUsers]:', error.response?.data || error.message);
+      throw error;
     }
-    // For other cases, use the general endpoint
-    const response = await api.get('/admin/users', { params });
-    return response.data;
   },
   createUser: async (userData) => {
     console.log('Creating user with data:', userData);
@@ -302,8 +307,13 @@ export const companyAdminsAPI = {
 // Companies Management APIs
 export const companiesAPI = {
   getCompanies: async (params = {}) => {
-    const response = await api.get('/admin/companies', { params });
-    return response.data;
+    try {
+      const response = await api.get('/admin/companies', { params });
+      return response.data;
+    } catch (error) {
+      console.error('API Error [getCompanies]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   getCompany: async (id) => {
     // Try the direct endpoint first
@@ -311,12 +321,17 @@ export const companiesAPI = {
       const response = await api.get(`/admin/companies/${id}`);
       return response.data;
     } catch (error) {
+      console.error('API Error [getCompany] - Direct failed, trying list fallback:', error.response?.data || error.message);
       // If direct endpoint fails, try getting from companies list
       if (error.response?.status === 404) {
-        const companiesResponse = await api.get('/admin/companies');
-        const company = companiesResponse.data.companies?.find(c => c.id === id);
-        if (company) {
-          return company;
+        try {
+          const companiesResponse = await api.get('/admin/companies');
+          const company = companiesResponse.data.companies?.find(c => c.id === id);
+          if (company) {
+            return company;
+          }
+        } catch (listError) {
+          console.error('API Error [getCompany] - List fallback failed:', listError.message);
         }
         throw new Error('Company not found');
       }
@@ -324,24 +339,49 @@ export const companiesAPI = {
     }
   },
   createCompany: async (companyData) => {
-    const response = await api.post('/admin/companies', companyData);
-    return response.data;
+    try {
+      const response = await api.post('/admin/companies', companyData);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [createCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   updateCompany: async (id, companyData) => {
-    const response = await api.put(`/admin/companies/${id}`, companyData);
-    return response.data;
+    try {
+      const response = await api.put(`/admin/companies/${id}`, companyData);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [updateCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   deleteCompany: async (id) => {
-    const response = await api.delete(`/admin/companies/${id}`);
-    return response.data;
+    try {
+      const response = await api.delete(`/admin/companies/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [deleteCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   enableCompany: async (id) => {
-    const response = await api.put(`/admin/companies/${id}`, { status: 'active' });
-    return response.data;
+    try {
+      const response = await api.put(`/admin/companies/${id}`, { status: 'active' });
+      return response.data;
+    } catch (error) {
+      console.error('API Error [enableCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
   deactivateCompany: async (id) => {
-    const response = await api.put(`/admin/companies/${id}/deactivate`);
-    return response.data;
+    try {
+      const response = await api.put(`/admin/companies/${id}/deactivate`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error [deactivateCompany]:', error.response?.data || error.message);
+      throw error;
+    }
   },
 };
 

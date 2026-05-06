@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardAPI } from '../../utils/apiService';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../contexts/NotificationContext';
 
 // Date formatting utility
@@ -84,6 +85,7 @@ const formatVisitDate = (dateString) => {
 };
 
 const CompanyAdminDashboard = () => {
+  const navigate = useNavigate();
   const { user, companyId } = useAuth();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
@@ -288,21 +290,21 @@ const CompanyAdminDashboard = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
-              onClick={() => window.location.href = '/leads'}
+              onClick={() => navigate('/leads')}
               className="btn btn-primary text-center"
             >
               <Target className="h-5 w-5 mr-2 inline" />
               Leads
             </button>
             <button
-              onClick={() => window.location.href = '/employees'}
+              onClick={() => navigate('/employees')}
               className="btn btn-secondary text-center"
             >
               <Users className="h-5 w-5 mr-2 inline" />
               Employee
             </button>
             <button
-              onClick={() => window.location.href = '/analytics'}
+              onClick={() => navigate('/analytics')}
               className="btn btn-secondary text-center"
             >
               <BarChart3 className="h-5 w-5 mr-2 inline" />

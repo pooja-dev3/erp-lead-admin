@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { dashboardAPI } from '../../utils/apiService';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../contexts/NotificationContext';
 
 // Date formatting utility
@@ -57,6 +58,7 @@ const formatDateTime = (dateString) => {
 };
 
 const PlatformAdminDashboard = () => {
+  const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
@@ -224,21 +226,21 @@ const PlatformAdminDashboard = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => window.location.href = '/companies'}
+            onClick={() => navigate('/companies')}
             className="btn btn-primary text-center"
           >
             <Building2 className="h-5 w-5 mr-2 inline" />
             Manage Companies
           </button>
           <button
-            onClick={() => window.location.href = '/visitors'}
+            onClick={() => navigate('/visitors')}
             className="btn btn-secondary text-center"
           >
             <UserCheck className="h-5 w-5 mr-2 inline" />
             View Visitors
           </button>
           <button
-            onClick={() => window.location.href = '/leads'}
+            onClick={() => navigate('/leads')}
             className="btn btn-secondary text-center"
           >
             <Target className="h-5 w-5 mr-2 inline" />

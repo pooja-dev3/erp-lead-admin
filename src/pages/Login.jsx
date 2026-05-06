@@ -24,9 +24,9 @@ const Login = () => {
   const fillDemoCredentials = (role) => {
     const credentials = {
       'platform': { email: 'admin@platform.com', password: 'admin123' },
-      'company': { email: 'admin@furniture.com', password: 'admin123' }
+      'company': { email: 'admin@rsl.com', password: 'admin123' }
     };
-    
+
     const creds = credentials[role];
     setEmail(creds.email);
     setPassword(creds.password);
@@ -63,7 +63,7 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       const result = await login(email, password);
       if (!result.success) {
@@ -116,11 +116,10 @@ const Login = () => {
                     setValidationErrors(prev => ({ ...prev, email: '' }));
                   }
                 }}
-                className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${
-                  validationErrors.email
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-                }`}
+                className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${validationErrors.email
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+                  }`}
                 placeholder="Enter your email address"
               />
               {validationErrors.email && (
@@ -152,11 +151,10 @@ const Login = () => {
                       setValidationErrors(prev => ({ ...prev, password: '' }));
                     }
                   }}
-                  className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${
-                    validationErrors.password
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
-                  }`}
+                  className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${validationErrors.password
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+                    }`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -211,7 +209,7 @@ const Login = () => {
                 {showDemoCredentials ? 'Hide' : 'Show'} credentials
               </button>
             </div>
-            
+
             {showDemoCredentials && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-primary-300 transition-colors duration-200">
@@ -230,7 +228,7 @@ const Login = () => {
                     Use
                   </button>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-primary-300 transition-colors duration-200">
                   <div className="flex items-center space-x-3">
                     <Building className="h-5 w-5 text-blue-600" />
