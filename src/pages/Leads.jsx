@@ -1401,7 +1401,7 @@ const Leads = () => {
                         required
                       >
                         <option value="">Select a company</option>
-                        {companies.map((company) => (
+                        {companies.filter(c => c.status === 'active').map((company) => (
                           <option key={company.id} value={company.id}>
                             {company.name}
                           </option>
