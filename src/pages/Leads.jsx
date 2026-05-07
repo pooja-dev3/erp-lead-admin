@@ -46,7 +46,7 @@ const Leads = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [companies, setCompanies] = useState([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState(companyId || '');
+  const [selectedCompanyId, setSelectedCompanyId] = useState(isPlatformAdmin ? '' : (companyId || ''));
   const [createLeadCompanyId, setCreateLeadCompanyId] = useState(''); // Separate state for create modal
   const [leadStats, setLeadStats] = useState(null);
   const [newLead, setNewLead] = useState({
@@ -893,7 +893,7 @@ const Leads = () => {
                 onChange={(e) => setSelectedCompanyId(e.target.value)}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Select a company</option>
+                <option value="">All Companies</option>
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
