@@ -293,8 +293,25 @@ const Leads = () => {
     } catch (error) {
       console.error('Error creating lead:', error);
       const errorData = error.response?.data;
-      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to create lead';
-      showError(errorMessage);
+      const errorMessage = errorData?.error || errorData?.message || error.message;
+
+      if (error.response?.status === 409) {
+        showError('Lead already exists for this visitor today');
+      } else if (error.response?.status === 400 && errorData?.details) {
+        // Handle Joi validation errors from backend
+        const backendErrors = {};
+        errorData.details.forEach(detail => {
+          // Map Joi field paths to form field names
+          const field = detail.field;
+          backendErrors[field] = detail.message;
+        });
+        setValidationErrors(backendErrors);
+        showError('Please check the highlighted fields');
+      } else if (error.response?.status === 400) {
+        showError(errorMessage || 'Invalid data provided');
+      } else {
+        showError(errorMessage || 'Failed to create lead. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -532,11 +549,21 @@ const Leads = () => {
       }, 500);
     } catch (error) {
       console.error('Error updating lead:', error);
-      console.error('Error response:', error.response);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update lead';
-      showError(error.response?.data?.error || error.response?.data?.message || 'Failed to update lead');
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message;
+
+      if (error.response?.status === 400 && errorData?.details) {
+        // Handle Joi validation errors from backend
+        const backendErrors = {};
+        errorData.details.forEach(detail => {
+          const field = detail.field;
+          backendErrors[field] = detail.message;
+        });
+        setValidationErrors(backendErrors);
+        showError('Please check the highlighted fields');
+      } else {
+        showError(errorMessage || 'Failed to update lead. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -833,7 +860,14 @@ const Leads = () => {
               <input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => {
+                  const newDateFrom = e.target.value;
+                  setDateFrom(newDateFrom);
+                  // If Date To is before new Date From, clear Date To
+                  if (dateTo && newDateFrom && dateTo < newDateFrom) {
+                    setDateTo('');
+                  }
+                }}
                 className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -845,6 +879,7 @@ const Leads = () => {
               <input
                 type="date"
                 value={dateTo}
+                min={dateFrom}
                 onChange={(e) => setDateTo(e.target.value)}
                 className="pl-10 w-full rounded-md border border-gray-300 py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
@@ -1205,7 +1240,7 @@ const Leads = () => {
                         {validationErrors.email && <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Organization</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Organization *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Building2 className="h-5 w-5 text-gray-400" />
@@ -1213,14 +1248,18 @@ const Leads = () => {
                           <input
                             type="text"
                             value={newLead.organization}
-                            onChange={(e) => setNewLead({ ...newLead, organization: e.target.value })}
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, organization: e.target.value });
+                              if (validationErrors.organization) setValidationErrors({ ...validationErrors, organization: '' });
+                            }}
                             placeholder="Organization"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.organization ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           />
                         </div>
+                        {validationErrors.organization && <p className="mt-1 text-xs text-red-600">{validationErrors.organization}</p>}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Designation *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Tag className="h-5 w-5 text-gray-400" />
@@ -1228,11 +1267,15 @@ const Leads = () => {
                           <input
                             type="text"
                             value={newLead.designation}
-                            onChange={(e) => setNewLead({ ...newLead, designation: e.target.value })}
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, designation: e.target.value });
+                              if (validationErrors.designation) setValidationErrors({ ...validationErrors, designation: '' });
+                            }}
                             placeholder="Designation"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.designation ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           />
                         </div>
+                        {validationErrors.designation && <p className="mt-1 text-xs text-red-600">{validationErrors.designation}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
@@ -1290,8 +1333,11 @@ const Leads = () => {
                           <select
                             value={newLead.interests}
                             required
-                            onChange={(e) => setNewLead({ ...newLead, interests: e.target.value })}
-                            className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 appearance-none bg-white"
+                            onChange={(e) => {
+                              setNewLead({ ...newLead, interests: e.target.value });
+                              if (validationErrors.interests) setValidationErrors({ ...validationErrors, interests: '' });
+                            }}
+                            className={`block w-full pl-10 pr-10 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 appearance-none bg-white ${validationErrors.interests ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           >
                             <option value="">Select Interest Level</option>
                             <option value="Hot">Hot</option>
@@ -1446,11 +1492,15 @@ const Leads = () => {
                             type="text"
                             required
                             value={editingLead.visitor_name || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_name: e.target.value })}
+                            onChange={(e) => {
+                              setEditingLead({ ...editingLead, visitor_name: e.target.value });
+                              if (validationErrors.full_name) setValidationErrors({ ...validationErrors, full_name: '' });
+                            }}
                             placeholder="Full name"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.full_name ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           />
                         </div>
+                        {validationErrors.full_name && <p className="mt-1 text-xs text-red-600">{validationErrors.full_name}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
@@ -1485,7 +1535,7 @@ const Leads = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Designation *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Tag className="h-5 w-5 text-gray-400" />
@@ -1493,11 +1543,15 @@ const Leads = () => {
                           <input
                             type="text"
                             value={editingLead.visitor_designation || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, visitor_designation: e.target.value })}
+                            onChange={(e) => {
+                              setEditingLead({ ...editingLead, visitor_designation: e.target.value });
+                              if (validationErrors.designation) setValidationErrors({ ...validationErrors, designation: '' });
+                            }}
                             placeholder="Designation"
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
+                            className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 ${validationErrors.designation ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           />
                         </div>
+                        {validationErrors.designation && <p className="mt-1 text-xs text-red-600">{validationErrors.designation}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
@@ -1547,15 +1601,18 @@ const Leads = () => {
                     <h4 className="text-md font-medium text-gray-900 mb-4">Lead Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Interest Level</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Interest Level *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Target className="h-5 w-5 text-gray-400" />
                           </div>
                           <select
                             value={editingLead.interests || ''}
-                            onChange={(e) => setEditingLead({ ...editingLead, interests: e.target.value })}
-                            className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 appearance-none bg-white"
+                            onChange={(e) => {
+                              setEditingLead({ ...editingLead, interests: e.target.value });
+                              if (validationErrors.interests) setValidationErrors({ ...validationErrors, interests: '' });
+                            }}
+                            className={`block w-full pl-10 pr-10 py-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200 appearance-none bg-white ${validationErrors.interests ? 'border-red-300 ring-2 ring-red-300' : 'border-gray-300'}`}
                           >
                             <option value="">Select Interest Level</option>
                             <option value="Hot">Hot</option>
