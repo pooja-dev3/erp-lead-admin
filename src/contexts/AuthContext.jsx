@@ -37,8 +37,31 @@ export const AuthProvider = ({ children }) => {
       }
       return { success: false, error: 'Invalid response from server' };
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || 'Login failed';
-      return { success: false, error: errorMessage };
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Handle structured validation errors from Joi
+        if (errorData.details && Array.isArray(errorData.details)) {
+          errorMessage = errorData.details.map(d => d.message).join(', ');
+        } 
+        // Handle simple error messages
+        else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return { 
+        success: false, 
+        error: errorMessage,
+        details: error.response?.data?.details 
+      };
     }
   };
 

@@ -106,7 +106,8 @@ const Visitors = () => {
       const params = {
         page: currentPage,
         search: searchTerm || undefined,
-        company_id: companyId
+        company_id: companyId,
+        status: statusFilter !== 'all' ? statusFilter : undefined
       };
       
       const response = await visitorsAPI.getVisitors(params);
@@ -137,18 +138,8 @@ const Visitors = () => {
         console.log('First visitor keys:', Object.keys(visitorsData[0]));
       }
       
-      // Apply status filtering
-      let filteredVisitors = visitorsData;
-      if (statusFilter !== 'all') {
-        filteredVisitors = visitorsData.filter(visitor => {
-          const isLikelyDeleted = !visitor.full_name && !visitor.email && !visitor.organization;
-          return statusFilter === 'active' ? !isLikelyDeleted : isLikelyDeleted;
-        });
-        console.log(`Applied ${statusFilter} filter: ${filteredVisitors.length} visitors remaining`);
-      }
-      
-      // Use filtered visitors
-      setVisitors(filteredVisitors);
+      // Use API response directly
+      setVisitors(visitorsData);
       setPagination(response.pagination || {});
     } catch (error) {
       console.error('Error fetching visitors:', error);
@@ -263,28 +254,20 @@ const Visitors = () => {
   };
 
   const handleToggleVisitorStatus = async (visitor) => {
-    const isActive = !visitor.full_name && !visitor.email && !visitor.organization;
-    const action = isActive ? 'activate' : 'deactivate';
-    const confirmMessage = isActive 
-      ? `Are you sure you want to activate ${visitor.full_name || 'this visitor'}?`
-      : `Are you sure you want to deactivate ${visitor.full_name || 'this visitor'}? They will no longer appear in active lists.`;
+    const isCurrentlyActive = visitor.status === 'active';
+    const action = isCurrentlyActive ? 'deactivate' : 'activate';
+    const confirmMessage = isCurrentlyActive 
+      ? `Are you sure you want to deactivate ${visitor.full_name || 'this visitor'}?`
+      : `Are you sure you want to activate ${visitor.full_name || 'this visitor'}?`;
     
     if (confirm(confirmMessage)) {
       try {
-        const result = await visitorsAPI.updateVisitor(visitor.id, {
-          is_deleted: isActive ? false : true,
-          status: isActive ? 'active' : 'inactive',
-          deleted_at: isActive ? null : new Date().toISOString(),
-          // Clear data when deactivating, restore when activating
-          full_name: isActive ? 'Restored Visitor' : null,
-          email: isActive ? 'restored@example.com' : null,
-          organization: isActive ? 'Restored Org' : null,
-          designation: isActive ? 'Restored' : null,
-          city: isActive ? 'Restored City' : null,
-          country: isActive ? 'Restored Country' : null
+        await visitorsAPI.updateVisitor(visitor.id, {
+          is_active: !isCurrentlyActive,
+          status: isCurrentlyActive ? 'inactive' : 'active'
         });
         
-        showSuccess(`Visitor ${isActive ? 'activated' : 'deactivated'} successfully`);
+        showSuccess(`Visitor ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully`);
         fetchVisitors();
       } catch (error) {
         console.error('Error toggling visitor status:', error);
@@ -547,74 +530,67 @@ const Visitors = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {console.log('Rendering visitors:', visitors)}
-                {visitors.map((visitor, index) => {
-                  console.log(`Visitor ${index}:`, visitor);
-                  console.log(`Visitor ${index} keys:`, Object.keys(visitor));
-                  console.log(`Visitor ${index} check_in_time:`, visitor.check_in_time);
-                  console.log(`Visitor ${index} status:`, visitor.status);
-                  console.log(`Visitor ${index} purpose:`, visitor.purpose);
-                  
-                  // Check if visitor appears to be deleted (mostly null/undefined values)
-                  const isLikelyDeleted = !visitor.full_name && !visitor.email && !visitor.organization;
-                  
-                  return (
-                  <tr key={visitor.id} className={`hover:bg-gray-50 ${isLikelyDeleted ? 'opacity-50' : ''}`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {visitor.full_name || 'Unknown'}
-                        {isLikelyDeleted && <span className="ml-2 text-xs text-orange-600">(Inactive)</span>}
-                      </div>
-                      <div className="text-sm text-gray-500">{visitor.organization || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{visitor.email || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{visitor.phone || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{visitor.designation || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        isLikelyDeleted 
-                          ? 'bg-orange-100 text-orange-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {isLikelyDeleted ? 'Inactive' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{visitor.city || 'N/A'}, {visitor.country || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(visitor.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleViewVisitor(visitor)}
-                          className="text-primary-600 hover:text-primary-900"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditVisitor(visitor)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Edit Visitor"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleVisitorStatus(visitor)}
-                          className={`${isLikelyDeleted ? 'text-green-600 hover:text-green-900' : 'text-orange-600 hover:text-orange-900'}`}
-                          title={isLikelyDeleted ? 'Activate Visitor' : 'Deactivate Visitor'}
-                        >
-                          {isLikelyDeleted ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
+                  {visitors.map((visitor, index) => {
+                    const isInactive = visitor.status === 'inactive';
+                    
+                    return (
+                    <tr key={visitor.id} className={`hover:bg-gray-50 ${isInactive ? 'opacity-50' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {visitor.full_name || 'Unknown'}
+                          {isInactive && <span className="ml-2 text-xs text-orange-600">(Inactive)</span>}
+                        </div>
+                        <div className="text-sm text-gray-500">{visitor.organization || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{visitor.email || 'N/A'}</div>
+                        <div className="text-sm text-gray-500">{visitor.phone || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{visitor.designation || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          isInactive 
+                            ? 'bg-orange-100 text-orange-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {isInactive ? 'Inactive' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{visitor.city || 'N/A'}, {visitor.country || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(visitor.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewVisitor(visitor)}
+                            className="text-primary-600 hover:text-primary-900"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditVisitor(visitor)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Edit Visitor"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleVisitorStatus(visitor)}
+                            className={`${isInactive ? 'text-green-600 hover:text-green-900' : 'text-orange-600 hover:text-orange-900'}`}
+                            title={isInactive ? 'Activate Visitor' : 'Deactivate Visitor'}
+                          >
+                            {isInactive ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    );
                 })}
               </tbody>
             </table>

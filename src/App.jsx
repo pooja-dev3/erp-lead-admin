@@ -20,6 +20,7 @@ import Employees from './pages/Employees';
 import Users from './pages/Users';
 import Analytics from './pages/Analytics';
 import Layout from './components/Layout';
+import NotificationContainer from './components/Notification';
 import './index.css';
 
 // Unauthorized Access Component
@@ -189,6 +190,7 @@ function App() {
       <NotificationProvider>
         <AuthProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <NotificationContainer />
             <AppRoutes />
           </Router>
         </AuthProvider>

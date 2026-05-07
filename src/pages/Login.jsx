@@ -67,7 +67,19 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (!result.success) {
-        showError(result.error || 'Login failed. Please check your credentials and try again.');
+        if (result.details && Array.isArray(result.details)) {
+          const fieldErrors = {};
+          result.details.forEach(detail => {
+            const field = detail.field || (detail.path && detail.path[0]);
+            if (field) {
+              fieldErrors[field] = detail.message;
+            }
+          });
+          setValidationErrors(fieldErrors);
+          showError('Please check the highlighted fields');
+        } else {
+          showError(result.error || 'Login failed. Please check your credentials and try again.');
+        }
       }
     } catch (error) {
       // Network or other unexpected errors

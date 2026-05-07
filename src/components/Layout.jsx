@@ -2,7 +2,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import NotificationContainer from './Notification';
 import { useState } from 'react';
 
 const Layout = () => {
@@ -48,9 +47,6 @@ const Layout = () => {
           </div>
         </main>
       </div>
-
-      {/* Global Notifications */}
-      <NotificationContainer />
     </div>
   );
 };
