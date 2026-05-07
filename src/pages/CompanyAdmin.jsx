@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { companyAdminAPI, companiesAPI } from '../utils/apiService';
+import { formatDate } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import {
@@ -634,7 +635,7 @@ const CompanyAdmin = () => {
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {admin.created_at ? new Date(admin.created_at).toLocaleDateString() : 'N/A'}
+                        {formatDate(admin.created_at)}
                       </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                         <button

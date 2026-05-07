@@ -3,6 +3,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { validateForm, validationRules } from '../utils/validation';
 import { companiesAPI, badgeMappingAPI } from '../utils/apiService';
+import { formatDate } from '../utils/dateUtils';
 import {
   Badge,
   Search,
@@ -263,7 +264,7 @@ const BadgeMapping = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {mapping.last_used ? new Date(mapping.last_used).toLocaleDateString() : 'Never'}
+                      {mapping.last_used ? formatDate(mapping.last_used) : 'Never'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button

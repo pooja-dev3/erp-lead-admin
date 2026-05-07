@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { visitorsAPI } from '../utils/apiService';
 import { useNotification } from '../contexts/NotificationContext';
+import { formatDate } from '../utils/dateUtils';
 
 const VisitorDetails = () => {
   const navigate = useNavigate();
@@ -63,15 +64,7 @@ const VisitorDetails = () => {
     navigate('/visitors');
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Using formatDate from utils/dateUtils
 
   const getStatusColor = (status) => {
     switch (status) {

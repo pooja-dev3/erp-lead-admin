@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Building2, Mail, Phone, User
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { leadsAPI } from '../utils/apiService';
+import { formatDate } from '../utils/dateUtils';
 
 const LeadDetails = () => {
   const { id } = useParams();
@@ -193,17 +194,13 @@ const LeadDetails = () => {
                       {lead.interests || 'Not Specified'}
                     </span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Follow-up Date</label>
-                    <p className="text-gray-900 flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      {new Date(lead.follow_up_date || lead.lead?.follow_up_date).toLocaleDateString() || 'Not Set'}
+                      {formatDate(lead.follow_up_date || lead.lead?.follow_up_date)}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Created Date</label>
                     <p className="text-gray-900">
-                      {new Date(lead.created_at || lead.lead?.created_at).toLocaleDateString() || 'N/A'}
+                      {formatDate(lead.created_at || lead.lead?.created_at)}
                     </p>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import axios from 'axios';
 import { leadsAPI, companiesAPI, visitorsAPI } from '../utils/apiService';
 import { API_BASE_URL } from '../utils/api';
+import { formatDate } from '../utils/dateUtils';
 import {
   Search,
   Filter,
@@ -90,17 +91,7 @@ const Leads = () => {
     }
   }, [currentPage, searchTerm, selectedCompanyId, dateFrom, dateTo]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'N/A';
-
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-
-    return `${day}/${month}/${year}`;
-  };
+  // Using formatDate from utils/dateUtils
 
   const fetchLeadStats = async () => {
     try {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { companiesAPI } from '../utils/apiService';
+import { formatDate } from '../utils/dateUtils';
 import {
   Search,
   Plus,
@@ -455,7 +456,7 @@ const Companies = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(company.created_at).toLocaleDateString('en-GB')}
+                        {formatDate(company.created_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">

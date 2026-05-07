@@ -46,13 +46,12 @@ const formatDateTime = (dateString) => {
       return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
     } else {
       // For older dates, show formatted date
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
     }
   } catch (error) {
     console.error('Error formatting date:', error);
@@ -71,13 +70,12 @@ const formatVisitDate = (dateString) => {
     if (isNaN(date.getTime())) return 'Invalid Date';
     
     // For visit dates, show a more readable format
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   } catch (error) {
     console.error('Error formatting visit date:', error);
     return 'Invalid Date';
