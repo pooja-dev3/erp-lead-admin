@@ -30,6 +30,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Don't redirect to login if we are already trying to login
+      if (error.config.url.includes('/auth/login')) {
+        return Promise.reject(error);
+      }
+      
       // Token expired or invalid - remove both token keys
       localStorage.removeItem('authToken');
       localStorage.removeItem('token');
