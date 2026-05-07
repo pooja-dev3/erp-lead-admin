@@ -206,10 +206,13 @@ const Employees = () => {
       console.error('Error headers:', error.response?.headers);
       
       // Handle specific error messages
-      if (error.response?.status === 409) {
-        showError('An employee with this email already exists');
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message;
+      
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
+        setFormErrors({ email: 'This email is already registered' });
+        showError('Username/Email already exists');
       } else if (error.response?.status === 400) {
-        const errorData = error.response?.data;
         if (errorData?.errors) {
           // Handle validation errors from backend
           const backendErrors = {};
@@ -219,26 +222,22 @@ const Employees = () => {
           setFormErrors(backendErrors);
           showError('Please correct the validation errors');
         } else {
-          showError(errorData?.message || 'Invalid data provided');
+          showError(errorMessage || 'Invalid data provided');
         }
       } else if (error.response?.status === 403) {
         showError('You do not have permission to create employees');
       } else if (error.response?.status === 422) {
-        const errorData = error.response?.data;
-        if (errorData?.error?.includes('email')) {
+        if (errorMessage?.toLowerCase().includes('email')) {
           setFormErrors({ email: 'This email is already registered' });
           showError('Email already exists');
-        } else if (errorData?.error?.includes('phone')) {
+        } else if (errorMessage?.toLowerCase().includes('phone')) {
           setFormErrors({ phone: 'This phone number is already registered' });
           showError('Phone number already exists');
         } else {
-          showError(errorData?.error || 'Validation failed');
+          showError(errorMessage || 'Validation failed');
         }
       } else {
-        const errorMessage = error.response?.data?.message || 
-                            error.response?.data?.error || 
-                            'Failed to create employee. Please try again.';
-        showError(errorMessage);
+        showError(errorMessage || 'Failed to create employee. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -282,11 +281,13 @@ const Employees = () => {
       console.log('Error data:', error.response?.data);
       
       // Handle specific error messages
-      if (error.response?.status === 409) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message;
+
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
         setEditFormErrors({ email: 'This email is already registered' });
-        showError('Email already exists');
+        showError('Username/Email already exists');
       } else if (error.response?.status === 400) {
-        const errorData = error.response?.data;
         if (errorData?.errors) {
           // Handle validation errors from backend
           const backendErrors = {};
@@ -296,34 +297,30 @@ const Employees = () => {
           setEditFormErrors(backendErrors);
           showError('Please correct the validation errors');
         } else {
-          showError(errorData?.message || 'Invalid data provided');
+          showError(errorMessage || 'Invalid data provided');
         }
       } else if (error.response?.status === 403) {
         showError('You do not have permission to update employees');
       } else if (error.response?.status === 422) {
-        const errorData = error.response?.data;
-        if (errorData?.error?.includes('email')) {
+        if (errorMessage?.toLowerCase().includes('email')) {
           setEditFormErrors({ email: 'This email is already registered' });
           showError('Email already exists');
-        } else if (errorData?.error?.includes('phone')) {
+        } else if (errorMessage?.toLowerCase().includes('phone')) {
           setEditFormErrors({ phone: 'This phone number is already registered' });
           showError('Phone number already exists');
         } else {
-          showError(errorData?.error || 'Validation failed');
+          showError(errorMessage || 'Validation failed');
         }
-      } else if (error.response?.data?.error === 'Insufficient permissions') {
+      } else if (errorMessage === 'Insufficient permissions') {
         showError('You do not have permission to update employees. Please contact your system administrator.');
-      } else if (error.response?.data?.error === 'Validation failed') {
+      } else if (errorMessage === 'Validation failed') {
         showError('Unable to update employee due to validation errors. Please check all fields and try again.');
-      } else if (error.response?.data?.error === 'Route not found') {
+      } else if (errorMessage === 'Route not found') {
         showError('Update functionality is not available for company admins. Employee management modifications require platform admin access.');
       } else if (error.response?.status === 404) {
         showError('Employee update endpoints are not available. Please contact your system administrator for employee modifications.');
       } else {
-        const errorMessage = error.response?.data?.message || 
-                            error.response?.data?.error || 
-                            'Failed to update employee. Please try again.';
-        showError(errorMessage);
+        showError(errorMessage || 'Failed to update employee. Please try again.');
       }
     } finally {
       setIsSubmitting(false);

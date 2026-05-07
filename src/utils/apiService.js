@@ -183,11 +183,6 @@ export const usersAPI = {
       console.log('Create user failed:', error.response?.status);
       console.log('Error response:', error.response?.data);
       
-      // Handle specific error cases
-      if (error.response?.data?.error === 'Email already exists') {
-        throw new Error('An account with this email address already exists');
-      }
-      
       // For other errors, try alternative approaches
       if (error.response?.status === 400 || error.response?.status === 403) {
         // Try with company_id as query parameter

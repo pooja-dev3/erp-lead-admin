@@ -194,6 +194,9 @@ const LeadDetails = () => {
                       {lead.interests || 'Not Specified'}
                     </span>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Follow-up Date</label>
+                    <p className="text-gray-900">
                       {formatDate(lead.follow_up_date || lead.lead?.follow_up_date)}
                     </p>
                   </div>

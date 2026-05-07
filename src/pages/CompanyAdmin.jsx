@@ -43,6 +43,8 @@ const CompanyAdmin = () => {
     company_id: '',
     role: 'company_admin'
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
 
   // Validation functions
   const validateEmail = (email) => {
@@ -209,11 +211,7 @@ const CompanyAdmin = () => {
 
     try {
       setIsSubmitting(true);
-      console.log('Creating company admin with data:', {
-        full_name: newAdmin.full_name,
-        email: newAdmin.email,
-        company_id: newAdmin.company_id
-      });
+      setFormErrors({});
       
       const adminData = {
         full_name: newAdmin.full_name,
@@ -223,11 +221,7 @@ const CompanyAdmin = () => {
         company_id: newAdmin.company_id
       };
       
-      console.log('Full admin data being sent:', adminData);
-      
       const response = await companyAdminAPI.createCompanyAdmin(adminData);
-      console.log('Company admin creation response:', response);
-      
       showSuccess('Company admin created successfully');
       setShowCreateForm(false);
       setNewAdmin({
@@ -241,57 +235,22 @@ const CompanyAdmin = () => {
       fetchCompanyAdmins();
     } catch (error) {
       console.error('Error creating company admin:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error status text:', error.response?.statusText);
-      console.error('Full error config:', error.config);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to create company admin';
       
-      // Log the request data that was sent
-      if (error.config) {
-        console.error('Request URL:', error.config.url);
-        console.error('Request method:', error.config.method);
-        console.error('Request headers:', error.config.headers);
-        console.error('Request data:', error.config.data);
-      }
-      
-      // Log detailed validation errors
-      if (error.response?.data?.details) {
-        console.log('Validation details:', error.response.data.details);
-        error.response.data.details.forEach((detail, index) => {
-          console.log(`Detail ${index}:`, detail);
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
+        setFormErrors({ email: 'This email is already registered' });
+        showError('Username/Email already exists');
+      } else if (error.response?.status === 400 && errorData?.details && Array.isArray(errorData.details)) {
+        const backendErrors = {};
+        errorData.details.forEach(detail => {
+          if (detail.field) backendErrors[detail.field] = detail.message;
         });
+        setFormErrors(backendErrors);
+        showError('Please correct the validation errors');
+      } else {
+        showError(errorMessage);
       }
-      
-      let errorMessage = 'Failed to create company admin';
-      if (error.response?.data) {
-        if (error.response.data.details && Array.isArray(error.response.data.details)) {
-          // Show specific validation errors
-          errorMessage = error.response.data.details.map(detail => detail.message || detail).join(', ');
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      // Show specific message for 500 errors
-      if (error.response?.status === 500) {
-        errorMessage = 'Server error occurred while creating company admin. The backend endpoint may be experiencing issues. Please check the server logs for more details.';
-        console.error('500 Error Details - This is likely a backend issue:');
-        console.error('- Endpoint: POST /api/admin/company-admins');
-        console.error('- Data sent:', JSON.stringify({
-          full_name: newAdmin.full_name,
-          email: newAdmin.email,
-          phone: newAdmin.phone,
-          password: newAdmin.password,
-          company_id: newAdmin.company_id
-        }, null, 2));
-        console.error('- Server response:', error.response?.data);
-      }
-      
-      showError(`Failed to create company admin: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -369,11 +328,7 @@ const CompanyAdmin = () => {
 
     try {
       setIsSubmitting(true);
-      console.log('Updating company admin with data:', {
-        full_name: editingAdmin.full_name,
-        email: editingAdmin.email,
-        company_id: editingAdmin.company_id
-      });
+      setEditFormErrors({});
       
       const adminData = {
         full_name: editingAdmin.full_name,
@@ -382,53 +337,33 @@ const CompanyAdmin = () => {
         company_id: editingAdmin.company_id
       };
       
-      // Only include password if it's provided
       if (editingAdmin.password.trim()) {
         adminData.password = editingAdmin.password;
       }
       
-      console.log('Full admin data being sent for update:', adminData);
-      
       await companyAdminAPI.updateCompanyAdmin(editingAdmin.id, adminData);
-      console.log('Company admin update response received');
-      
       showSuccess('Company admin updated successfully');
       setShowEditForm(false);
       setEditingAdmin(null);
       fetchCompanyAdmins();
     } catch (error) {
       console.error('Error updating company admin:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error status:', error.response?.status);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to update company admin';
       
-      // Log detailed validation errors
-      if (error.response?.data?.details) {
-        console.log('Validation details:', error.response.data.details);
-        error.response.data.details.forEach((detail, index) => {
-          console.log(`Detail ${index}:`, detail);
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
+        setEditFormErrors({ email: 'This email is already registered' });
+        showError('Username/Email already exists');
+      } else if (error.response?.status === 400 && errorData?.details && Array.isArray(errorData.details)) {
+        const backendErrors = {};
+        errorData.details.forEach(detail => {
+          if (detail.field) backendErrors[detail.field] = detail.message;
         });
+        setEditFormErrors(backendErrors);
+        showError('Please correct the validation errors');
+      } else {
+        showError(errorMessage);
       }
-      
-      let errorMessage = 'Failed to update company admin';
-      if (error.response?.data) {
-        if (error.response.data.details && Array.isArray(error.response.data.details)) {
-          // Show specific validation errors
-          errorMessage = error.response.data.details.map(detail => detail.message || detail).join(', ');
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      // Show specific message for 500 errors
-      if (error.response?.status === 500) {
-        errorMessage = 'Server error occurred while updating company admin. This may be a temporary issue or the endpoint may not be fully implemented yet.';
-      }
-      
-      showError(`Failed to update company admin: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -735,10 +670,18 @@ const CompanyAdmin = () => {
                             type="text"
                             required
                             value={newAdmin.full_name}
-                            onChange={(e) => setNewAdmin({ ...newAdmin, full_name: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewAdmin({ ...newAdmin, full_name: e.target.value });
+                              if (formErrors.full_name) setFormErrors({...formErrors, full_name: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              formErrors.full_name ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter admin full name"
                           />
+                          {formErrors.full_name && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.full_name}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -746,10 +689,18 @@ const CompanyAdmin = () => {
                             type="email"
                             required
                             value={newAdmin.email}
-                            onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewAdmin({ ...newAdmin, email: e.target.value });
+                              if (formErrors.email) setFormErrors({...formErrors, email: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              formErrors.email ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter email address"
                           />
+                          {formErrors.email && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Phone *</label>
@@ -757,10 +708,18 @@ const CompanyAdmin = () => {
                             type="tel"
                             required
                             value={newAdmin.phone}
-                            onChange={(e) => setNewAdmin({ ...newAdmin, phone: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewAdmin({ ...newAdmin, phone: e.target.value });
+                              if (formErrors.phone) setFormErrors({...formErrors, phone: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter phone number"
                           />
+                          {formErrors.phone && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Password *</label>
@@ -768,18 +727,31 @@ const CompanyAdmin = () => {
                             type="password"
                             required
                             value={newAdmin.password}
-                            onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewAdmin({ ...newAdmin, password: e.target.value });
+                              if (formErrors.password) setFormErrors({...formErrors, password: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              formErrors.password ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter password"
                           />
+                          {formErrors.password && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Company *</label>
                           <select
                             required
                             value={newAdmin.company_id}
-                            onChange={(e) => setNewAdmin({ ...newAdmin, company_id: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setNewAdmin({ ...newAdmin, company_id: e.target.value });
+                              if (formErrors.company_id) setFormErrors({...formErrors, company_id: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              formErrors.company_id ? 'border-red-500' : 'border-gray-300'
+                            }`}
                           >
                             <option value="">Select a company</option>
                             {companies.map((company, index) => (
@@ -788,6 +760,9 @@ const CompanyAdmin = () => {
                               </option>
                             ))}
                           </select>
+                          {formErrors.company_id && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.company_id}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -838,10 +813,18 @@ const CompanyAdmin = () => {
                             type="text"
                             required
                             value={editingAdmin.full_name}
-                            onChange={(e) => setEditingAdmin({ ...editingAdmin, full_name: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setEditingAdmin({ ...editingAdmin, full_name: e.target.value });
+                              if (editFormErrors.full_name) setEditFormErrors({...editFormErrors, full_name: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              editFormErrors.full_name ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter admin full name"
                           />
+                          {editFormErrors.full_name && (
+                            <p className="mt-1 text-sm text-red-600">{editFormErrors.full_name}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Email *</label>
@@ -849,10 +832,18 @@ const CompanyAdmin = () => {
                             type="email"
                             required
                             value={editingAdmin.email}
-                            onChange={(e) => setEditingAdmin({ ...editingAdmin, email: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setEditingAdmin({ ...editingAdmin, email: e.target.value });
+                              if (editFormErrors.email) setEditFormErrors({...editFormErrors, email: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              editFormErrors.email ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter email address"
                           />
+                          {editFormErrors.email && (
+                            <p className="mt-1 text-sm text-red-600">{editFormErrors.email}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Phone *</label>
@@ -860,29 +851,51 @@ const CompanyAdmin = () => {
                             type="tel"
                             required
                             value={editingAdmin.phone}
-                            onChange={(e) => setEditingAdmin({ ...editingAdmin, phone: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setEditingAdmin({ ...editingAdmin, phone: e.target.value });
+                              if (editFormErrors.phone) setEditFormErrors({...editFormErrors, phone: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              editFormErrors.phone ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Enter phone number"
                           />
+                          {editFormErrors.phone && (
+                            <p className="mt-1 text-sm text-red-600">{editFormErrors.phone}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">New Password</label>
                           <input
                             type="password"
                             value={editingAdmin.password}
-                            onChange={(e) => setEditingAdmin({ ...editingAdmin, password: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setEditingAdmin({ ...editingAdmin, password: e.target.value });
+                              if (editFormErrors.password) setEditFormErrors({...editFormErrors, password: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              editFormErrors.password ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             placeholder="Leave blank to keep current password"
                           />
-                          <p className="mt-1 text-xs text-gray-500">Leave blank to keep current password</p>
+                          {editFormErrors.password ? (
+                            <p className="mt-1 text-sm text-red-600">{editFormErrors.password}</p>
+                          ) : (
+                            <p className="mt-1 text-xs text-gray-500">Leave blank to keep current password</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Company *</label>
                           <select
                             required
                             value={editingAdmin.company_id}
-                            onChange={(e) => setEditingAdmin({ ...editingAdmin, company_id: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            onChange={(e) => {
+                              setEditingAdmin({ ...editingAdmin, company_id: e.target.value });
+                              if (editFormErrors.company_id) setEditFormErrors({...editFormErrors, company_id: ''});
+                            }}
+                            className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                              editFormErrors.company_id ? 'border-red-500' : 'border-gray-300'
+                            }`}
                           >
                             <option value="">Select a company</option>
                             {companies.map((company, index) => (
@@ -891,6 +904,9 @@ const CompanyAdmin = () => {
                               </option>
                             ))}
                           </select>
+                          {editFormErrors.company_id && (
+                            <p className="mt-1 text-sm text-red-600">{editFormErrors.company_id}</p>
+                          )}
                         </div>
                       </div>
                     </div>

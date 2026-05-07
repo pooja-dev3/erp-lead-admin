@@ -163,8 +163,22 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create user';
-      showError(errorMessage);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to create user';
+      
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
+        setValidationErrors({ email: 'This email is already registered' });
+        showError('Username/Email already exists');
+      } else if (error.response?.status === 400 && errorData?.errors) {
+        const backendErrors = {};
+        Object.keys(errorData.errors).forEach(field => {
+          backendErrors[field] = errorData.errors[field][0];
+        });
+        setValidationErrors(backendErrors);
+        showError('Please correct the validation errors');
+      } else {
+        showError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -216,8 +230,22 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to update user';
-      showError(errorMessage);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || errorData?.message || error.message || 'Failed to update user';
+      
+      if (error.response?.status === 409 || errorMessage?.toLowerCase().includes('email already exists')) {
+        setValidationErrors({ email: 'This email is already registered' });
+        showError('Username/Email already exists');
+      } else if (error.response?.status === 400 && errorData?.errors) {
+        const backendErrors = {};
+        Object.keys(errorData.errors).forEach(field => {
+          backendErrors[field] = errorData.errors[field][0];
+        });
+        setValidationErrors(backendErrors);
+        showError('Please correct the validation errors');
+      } else {
+        showError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
