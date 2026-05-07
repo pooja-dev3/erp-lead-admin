@@ -32,18 +32,18 @@ const Analytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch data using working APIs (dashboardAPI.getEmployee() returns 403 forbidden)
       const [dashboardData, usersData, leadsData] = await Promise.all([
         dashboardAPI.getCompany(companyId),
         usersAPI.getUsers({ company_id: companyId, page: 1 }), // Add pagination to match Employees page
         leadsAPI.getLeads({ company_id: companyId })
       ]);
-      
+
       console.log('Dashboard data:', dashboardData);
       console.log('Users data:', usersData);
       console.log('Leads data:', leadsData);
-      
+
       // Process the data for analytics display
       const processedData = processAnalyticsData(dashboardData, usersData, leadsData);
       setAnalyticsData(processedData);
@@ -60,19 +60,22 @@ const Analytics = () => {
     const users = usersData?.users || [];
     const leads = leadsData?.leads || [];
     const dashboardStats = dashboardData || {};
-    
+
     console.log('Analytics - Users data structure:', usersData);
     console.log('Analytics - Users array length:', users.length);
     console.log('Analytics - Pagination data:', usersData?.pagination);
-    
+
     // Use pagination total_records first (correct count), then fallback to array length, and subtract 2 to match actual count
     const accurateEmployeeCount = (usersData?.pagination?.total_records || users.length) - 2;
-    
+
     console.log('Final employee count being used:', accurateEmployeeCount);
-    
+
+    // Correct source of truth for totals
+    const totalLeadsCount = dashboardStats.leads?.total || leadsData?.pagination?.total_records || leads.length;
+
     return {
       overview: {
-        totalLeads: leadsData?.pagination?.total || leads.length,
+        totalLeads: totalLeadsCount,
         activeLeads: leads.filter(lead => lead.status === 'active' || lead.is_active !== false).length,
         conversionRate: dashboardStats.leads?.conversion_rate || 0,
         totalEmployees: accurateEmployeeCount,
@@ -92,28 +95,28 @@ const Analytics = () => {
   };
 
   const calculateGrowth = (items) => {
-    if (items.length < 2) return { percentage: 0, trend: 'stable' };
-    
+    if (items.length < 2) return { percentage: null, trend: 'stable' };
+
     // Calculate growth based on creation dates
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
-    
+
     const recent = items.filter(item => {
       const createdAt = new Date(item.created_at);
       return createdAt >= thirtyDaysAgo;
     }).length;
-    
+
     const previous = items.filter(item => {
       const createdAt = new Date(item.created_at);
       return createdAt >= sixtyDaysAgo && createdAt < thirtyDaysAgo;
     }).length;
-    
-    if (previous === 0) return { percentage: recent > 0 ? 100 : 0, trend: recent > 0 ? 'up' : 'stable' };
-    
+
+    if (previous === 0) return { percentage: recent > 0 ? 100 : null, trend: recent > 0 ? 'up' : 'stable' };
+
     const percentage = ((recent - previous) / previous) * 100;
     return {
-      percentage: Math.abs(percentage).toFixed(1),
+      percentage: percentage !== 0 ? Math.abs(percentage).toFixed(1) : null,
       trend: percentage > 0 ? 'up' : percentage < 0 ? 'down' : 'stable'
     };
   };
@@ -132,17 +135,17 @@ const Analytics = () => {
 
   const getLeadSources = (leads) => {
     if (!leads || leads.length === 0) return [];
-    
+
     // Since leads don't have a source field, categorize by organization or city
     const sources = {};
     leads.forEach(lead => {
       // Use organization as the "source" category, fallback to city, then "Unknown"
-      const source = lead.visitor_organization || lead.organization || 
-                   lead.visitor_city || lead.city || 
-                   'Unknown Organization';
+      const source = lead.visitor_organization || lead.organization ||
+        lead.visitor_city || lead.city ||
+        'Unknown Organization';
       sources[source] = (sources[source] || 0) + 1;
     });
-    
+
     return Object.entries(sources)
       .map(([source, count]) => ({
         source,
@@ -159,11 +162,10 @@ const Analytics = () => {
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {change && (
-            <div className={`flex items-center mt-2 text-sm ${
-              changeType === 'up' ? 'text-green-600' : 
+          {change !== null && change !== undefined && (
+            <div className={`flex items-center mt-2 text-sm ${changeType === 'up' ? 'text-green-600' :
               changeType === 'down' ? 'text-red-600' : 'text-gray-600'
-            }`}>
+              }`}>
               {changeType === 'up' && <ArrowUp className="h-4 w-4 mr-1" />}
               {changeType === 'down' && <ArrowDown className="h-4 w-4 mr-1" />}
               {change}% from last period
@@ -256,8 +258,8 @@ const Analytics = () => {
                     <span className="text-sm font-medium text-gray-900">{source.source}</span>
                     <div className="flex items-center space-x-2">
                       <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
                           style={{ width: `${source.percentage}%` }}
                         ></div>
                       </div>

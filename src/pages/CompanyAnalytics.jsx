@@ -18,19 +18,19 @@ const CompanyAnalytics = () => {
   const [analytics, setAnalytics] = useState([]);
   const [companyPerformance, setCompanyPerformance] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
-  
+
   // Analytics data for JSX
   const [totalCompanies, setTotalCompanies] = useState(0);
   const [activeCompanies, setActiveCompanies] = useState(0);
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
   const [conversionRate, setConversionRate] = useState('0.0');
-  
+
   // Growth trends data
   const [monthlyGrowth, setMonthlyGrowth] = useState(0);
   const [quarterlyGrowth, setQuarterlyGrowth] = useState(0);
   const [yearlyGrowth, setYearlyGrowth] = useState(0);
-  
+
   // Industry distribution data
   const [industryData, setIndustryData] = useState({});
 
@@ -41,7 +41,7 @@ const CompanyAnalytics = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch companies data
       const companiesResponse = await companiesAPI.getCompanies();
       const companiesList = companiesResponse.companies || [];
@@ -50,11 +50,11 @@ const CompanyAnalytics = () => {
       // Fetch dashboard data for accurate leads count
       const dashboardData = await dashboardAPI.getOverview();
       const accurateLeadsCount = dashboardData.leads?.total || 0;
-      
+
       // Calculate real analytics metrics
       const totalCompaniesCount = companiesList.length;
       const activeCompaniesCount = companiesList.filter(c => c.status === 'active' || c.status === 'Active').length;
-      
+
       // Use accurate leads count from dashboard API instead of manual calculation
       console.log('Using dashboard API for accurate leads count:', accurateLeadsCount);
       console.log('Dashboard response:', dashboardData);
@@ -65,20 +65,20 @@ const CompanyAnalytics = () => {
         return sum + companyUsers;
       }, 0);
       const conversionRateCount = totalUsersCount > 0 ? ((accurateLeadsCount / totalUsersCount) * 100).toFixed(1) : '0.0';
-      
+
       // Set state for JSX access
       setTotalCompanies(totalCompaniesCount);
       setActiveCompanies(activeCompaniesCount);
       setTotalLeads(accurateLeadsCount);
       setTotalUsers(totalUsersCount);
       setConversionRate(conversionRateCount);
-      
+
       console.log('Total leads calculated:', accurateLeadsCount);
       console.log('Total users calculated:', totalUsersCount);
       console.log('Companies count:', totalCompaniesCount);
       console.log('Companies leads breakdown:', companiesList.map(c => ({ name: c.name, leads: c.total_leads || c.leads || c.lead_count || 0 })));
-      console.log('Companies users breakdown:', companiesList.map(c => ({ 
-        name: c.name, 
+      console.log('Companies users breakdown:', companiesList.map(c => ({
+        name: c.name,
         total_users: c.total_users,
         users: c.users,
         user_count: c.user_count,
@@ -136,12 +136,12 @@ const CompanyAnalytics = () => {
       // Create monthly data based on real company data
       const currentMonth = new Date().getMonth(); // 0-11 (Jan-Dec)
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
+
       // Create monthly data based on real company data
       const monthlyDataGenerated = months.map((month, index) => {
         // Use real leads data distributed across months
         const monthLeads = Math.floor(totalLeads / 12) + (index === currentMonth ? Math.floor(totalLeads * 0.1) : 0);
-        
+
         return {
           month,
           leads: monthLeads
@@ -154,53 +154,53 @@ const CompanyAnalytics = () => {
       const oneMonthAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, currentDate.getDate());
       const threeMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 3, currentDate.getDate());
       const oneYearAgo = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate());
-      
+
       const companiesCreatedLastMonth = companiesList.filter(c => {
         const createdAt = new Date(c.created_at);
         return createdAt >= oneMonthAgo && createdAt <= currentDate;
       }).length;
-      
+
       const companiesCreatedLastQuarter = companiesList.filter(c => {
         const createdAt = new Date(c.created_at);
         return createdAt >= threeMonthsAgo && createdAt <= currentDate;
       }).length;
-      
+
       const companiesCreatedLastYear = companiesList.filter(c => {
         const createdAt = new Date(c.created_at);
         return createdAt >= oneYearAgo && createdAt <= currentDate;
       }).length;
-      
+
       // Calculate growth percentages
       const monthlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastMonth / totalCompaniesCount) * 100).toFixed(1) : 0;
       const quarterlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastQuarter / totalCompaniesCount) * 100).toFixed(1) : 0;
       const yearlyGrowthRate = totalCompaniesCount > 0 ? ((companiesCreatedLastYear / totalCompaniesCount) * 100).toFixed(1) : 0;
-      
+
       setMonthlyGrowth(monthlyGrowthRate);
       setQuarterlyGrowth(quarterlyGrowthRate);
       setYearlyGrowth(yearlyGrowthRate);
-      
+
       // Calculate real industry distribution from company data
       const industryCounts = {};
       companiesList.forEach(company => {
         const industry = company.industry || company.sector || company.category || 'Others';
         industryCounts[industry] = (industryCounts[industry] || 0) + 1;
       });
-      
+
       // Convert to percentages
       const industryPercentages = {};
       Object.keys(industryCounts).forEach(industry => {
         industryPercentages[industry] = totalCompaniesCount > 0 ? ((industryCounts[industry] / totalCompaniesCount) * 100).toFixed(1) : 0;
       });
-      
+
       setIndustryData(industryPercentages);
-      
+
       console.log('Industry distribution:', industryPercentages);
       console.log('Growth trends:', { monthlyGrowthRate, quarterlyGrowthRate, yearlyGrowthRate });
 
     } catch (error) {
       console.error('Failed to fetch analytics data:', error);
       showError('Failed to load analytics data');
-      
+
       // Set fallback data
       setAnalytics([
         {
@@ -284,9 +284,8 @@ const CompanyAnalytics = () => {
                     <div className="text-2xl font-semibold text-gray-900">
                       {metric.value}
                     </div>
-                    <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                      metric.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`ml-2 flex items-baseline text-sm font-semibold ${metric.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       <TrendingUp className="self-center flex-shrink-0 h-4 w-4 mr-1" />
                       {metric.change}
                     </div>
@@ -307,9 +306,9 @@ const CompanyAnalytics = () => {
             <div className="flex h-full items-end space-x-2">
               {monthlyData.map((data, index) => (
                 <div key={data.month} className="flex-1 flex flex-col items-center">
-                  <div 
+                  <div
                     className="bg-green-500 rounded-sm transition-all duration-300 hover:bg-green-600 w-full"
-                    style={{ 
+                    style={{
                       height: `${Math.max((data.leads / Math.max(...monthlyData.map(d => d.leads))) * 240, 10)}px`,
                       minHeight: '10px'
                     }}
@@ -395,7 +394,7 @@ const CompanyAnalytics = () => {
               <span className="text-sm font-medium text-green-600">+{yearlyGrowth}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              <div className="bg-green-600 h-2 rounded-full" style={{width: `${monthlyGrowth}%`}}></div>
+              <div className="bg-green-600 h-2 rounded-full" style={{ width: `${monthlyGrowth}%` }}></div>
             </div>
           </div>
         </div>

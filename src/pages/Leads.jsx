@@ -94,11 +94,11 @@ const Leads = () => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
-    
+
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
   };
 
@@ -132,18 +132,18 @@ const Leads = () => {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       };
-      
+
       // Use selectedCompanyId for platform admins, otherwise use companyId
       const effectiveCompanyId = isPlatformAdmin ? selectedCompanyId : companyId;
       if (effectiveCompanyId) {
         params.company_id = effectiveCompanyId;
       }
-      
+
       const response = await leadsAPI.getLeads(params);
-      
+
       // Try different possible response structures
       let leadsData = [];
-      
+
       if (Array.isArray(response)) {
         leadsData = response;
       } else if (response.leads && Array.isArray(response.leads)) {
@@ -151,7 +151,7 @@ const Leads = () => {
       } else if (response.data && Array.isArray(response.data)) {
         leadsData = response.data;
       }
-      
+
       setLeads(leadsData);
       setPagination(response.pagination || {});
     } catch (error) {
@@ -208,29 +208,29 @@ const Leads = () => {
 
   const handleCreateLead = async (e) => {
     e.preventDefault();
-    
+
     const errors = {};
-    
+
     if (!validateName(newLead.full_name)) {
       errors.full_name = 'Full name must be at least 2 characters long';
     }
-    
+
     if (!validateEmail(newLead.email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!validatePhone(newLead.phone)) {
       errors.phone = 'Phone number must be exactly 10 digits';
     }
-    
+
     if (!validateFollowUpDate(newLead.follow_up_date)) {
       errors.follow_up_date = 'Follow-up date is required and must be today or in the future';
     }
-    
+
     if (isPlatformAdmin && !createLeadCompanyId) {
       errors.company_id = 'Please select a company';
     }
-    
+
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) {
       return;
@@ -239,7 +239,7 @@ const Leads = () => {
 
     try {
       setIsSubmitting(true);
-      
+
       // Format the follow_up_date properly for the API
       let formattedFollowUpDate = null;
       if (newLead.follow_up_date) {
@@ -250,15 +250,15 @@ const Leads = () => {
           formattedFollowUpDate = date.toISOString().split('T')[0];
         }
       }
-      
+
       const leadData = {
         ...newLead,
         follow_up_date: formattedFollowUpDate,
         notes: newLead.notes || 'No notes provided' // Provide default if empty
       };
-      
+
       console.log('Creating lead with data:', JSON.stringify(leadData, null, 2));
-      
+
       // Try sending company_id in headers for platform admins
       const effectiveCompanyId = isPlatformAdmin ? createLeadCompanyId : companyId;
       console.log('=== LEAD CREATION DEBUG ===');
@@ -269,20 +269,20 @@ const Leads = () => {
       console.log('effectiveCompanyId:', effectiveCompanyId);
       console.log('newLead state:', newLead);
       console.log('leadData being sent (clean):', JSON.stringify(leadData, null, 2));
-      
+
       if (isPlatformAdmin && !effectiveCompanyId) {
         showError('Please select a company to create leads');
         return;
       }
-      
+
       // Pass company_id as parameter for header-based approach
       const params = effectiveCompanyId ? { company_id: effectiveCompanyId } : {};
       console.log('Sending params for headers:', params);
       console.log('=== END DEBUG ===');
-      
+
       const response = await leadsAPI.createLead(leadData, params);
       console.log('Lead created successfully:', response);
-      
+
       showSuccess('Lead created successfully');
       setShowCreateForm(false);
       setCreateLeadCompanyId(''); // Reset create modal company selection
@@ -334,7 +334,7 @@ const Leads = () => {
         console.error('Error deleting lead:', error);
         console.error('Error status:', error.response?.status);
         console.error('Error data:', error.response?.data);
-        
+
         if (error.response?.status === 404) {
           showError('Delete functionality is not available. This feature may be under development.');
         } else if (error.response?.status === 500) {
@@ -365,25 +365,25 @@ const Leads = () => {
 
   const handleUpdateLeadSubmit = async (e) => {
     e.preventDefault();
-    
+
     const errors = {};
-    
+
     if (!validateName(editingLead.visitor_name)) {
       errors.full_name = 'Full name must be at least 2 characters long';
     }
-    
+
     if (!validateEmail(editingLead.visitor_email)) {
       errors.email = 'Please enter a valid email address';
     }
-    
+
     if (!validatePhone(editingLead.visitor_phone)) {
       errors.phone = 'Phone number must be exactly 10 digits';
     }
-    
+
     if (!validateFollowUpDate(editingLead.follow_up_date)) {
       errors.follow_up_date = 'Follow-up date is required and must be today or in the future';
     }
-    
+
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) {
       return;
@@ -392,13 +392,13 @@ const Leads = () => {
 
     try {
       setIsSubmitting(true);
-      
+
       // For platform admins, ensure we have a company context
       if (isPlatformAdmin && !selectedCompanyId && !editingLead.company_id) {
         showError('Please select a company from the dropdown before updating leads');
         return;
       }
-      
+
       // Format the follow_up_date properly for the API
       let formattedFollowUpDate = null;
       if (editingLead.follow_up_date) {
@@ -409,17 +409,17 @@ const Leads = () => {
           formattedFollowUpDate = date.toISOString().split('T')[0];
         }
       }
-      
+
       // Update visitor contact information first if it has changed
-      if (editingLead.visitor_id && 
-          (editingLead.visitor_name !== editingLead.original_visitor_name ||
-           editingLead.visitor_email !== editingLead.original_visitor_email ||
-           editingLead.visitor_phone !== editingLead.original_visitor_phone ||
-           editingLead.visitor_organization !== editingLead.original_visitor_organization ||
-           editingLead.visitor_designation !== editingLead.original_visitor_designation ||
-           editingLead.visitor_city !== editingLead.original_visitor_city ||
-           editingLead.visitor_country !== editingLead.original_visitor_country)) {
-        
+      if (editingLead.visitor_id &&
+        (editingLead.visitor_name !== editingLead.original_visitor_name ||
+          editingLead.visitor_email !== editingLead.original_visitor_email ||
+          editingLead.visitor_phone !== editingLead.original_visitor_phone ||
+          editingLead.visitor_organization !== editingLead.original_visitor_organization ||
+          editingLead.visitor_designation !== editingLead.original_visitor_designation ||
+          editingLead.visitor_city !== editingLead.original_visitor_city ||
+          editingLead.visitor_country !== editingLead.original_visitor_country)) {
+
         console.log('Updating visitor contact information...');
         const visitorData = {
           full_name: editingLead.visitor_name,
@@ -430,9 +430,9 @@ const Leads = () => {
           city: editingLead.visitor_city,
           country: editingLead.visitor_country
         };
-        
+
         console.log('Visitor data being sent:', JSON.stringify(visitorData, null, 2));
-        
+
         try {
           await visitorsAPI.updateVisitor(editingLead.visitor_id, visitorData);
           console.log('Visitor information updated successfully');
@@ -442,16 +442,16 @@ const Leads = () => {
           console.log('Continuing with lead update...');
         }
       }
-      
+
       const leadData = {};
-      
+
       // Only include fields that have actually changed
       console.log('=== CHANGE DETECTION DEBUG ===');
       console.log('visitor_organization changed:', editingLead.visitor_organization, '!==', editingLead.original_visitor_organization, '=', editingLead.visitor_organization !== editingLead.original_visitor_organization);
       console.log('visitor_designation changed:', editingLead.visitor_designation, '!==', editingLead.original_visitor_designation, '=', editingLead.visitor_designation !== editingLead.original_visitor_designation);
       console.log('visitor_city changed:', editingLead.visitor_city, '!==', editingLead.original_visitor_city, '=', editingLead.visitor_city !== editingLead.original_visitor_city);
       console.log('visitor_country changed:', editingLead.visitor_country, '!==', editingLead.original_visitor_country, '=', editingLead.visitor_country !== editingLead.original_visitor_country);
-      
+
       if (editingLead.visitor_organization !== editingLead.original_visitor_organization) {
         leadData.organization = editingLead.visitor_organization;
         console.log('Adding organization to update:', editingLead.visitor_organization);
@@ -468,17 +468,17 @@ const Leads = () => {
         leadData.country = editingLead.visitor_country;
         console.log('Adding country to update:', editingLead.visitor_country);
       }
-      
+
       // Always include these fields as they might be edited
       leadData.interests = editingLead.interests;
       leadData.notes = editingLead.notes;
       if (editingLead.follow_up_date) {
         leadData.follow_up_date = formatDateForAPI(editingLead.follow_up_date);
       }
-      
+
       console.log('Final leadData:', JSON.stringify(leadData, null, 2));
       console.log('=== END CHANGE DETECTION DEBUG ===');
-      
+
       console.log('=== FRONTEND DATA ANALYSIS ===');
       console.log('editingLead state:', JSON.stringify(editingLead, null, 2));
       console.log('Form field sources:');
@@ -488,20 +488,20 @@ const Leads = () => {
       console.log('  - country source:', editingLead.visitor_country || editingLead.country);
       console.log('Final leadData being sent:', JSON.stringify(leadData, null, 2));
       console.log('=== END FRONTEND ANALYSIS ===');
-      
+
       // Pass company_id parameter for platform admins
       const effectiveCompanyId = isPlatformAdmin ? (selectedCompanyId || editingLead.company_id) : companyId;
       const params = isPlatformAdmin && effectiveCompanyId ? { company_id: effectiveCompanyId } : {};
       console.log('Sending params for update:', params);
-      
+
       const response = await leadsAPI.updateLead(editingLead.id, leadData, params);
       console.log('Lead update response:', response);
       console.log('Full response structure:', JSON.stringify(response, null, 2));
-      
+
       // Check the response structure safely
       const updatedLeadData = response.data?.lead?.lead || response.data?.lead || response.data || response;
       console.log('Updated lead data from response:', updatedLeadData);
-      
+
       // Check if the data was actually updated by comparing sent vs received
       if (updatedLeadData) {
         console.log('=== UPDATE VERIFICATION ===');
@@ -511,7 +511,7 @@ const Leads = () => {
         console.log('Sent organization:', leadData.organization);
         console.log('Received organization:', updatedLeadData.lead?.organization);
         console.log('Organization updated:', leadData.organization === updatedLeadData.lead?.organization);
-        
+
         // Also check all fields for debugging
         console.log('All received fields:', Object.keys(updatedLeadData));
         console.log('Full received data:', JSON.stringify(updatedLeadData, null, 2));
@@ -519,11 +519,11 @@ const Leads = () => {
       } else {
         console.log('No lead data found in response');
       }
-      
+
       showSuccess('Lead updated successfully');
       setShowEditForm(false);
       setEditingLead(null);
-      
+
       // Add a small delay before refreshing to ensure backend has processed the update
       setTimeout(() => {
         console.log('Refreshing leads list after update...');
@@ -576,12 +576,12 @@ const Leads = () => {
     try {
       const response = await visitorsAPI.searchVisitor(searchPhone.trim());
       console.log('Visitor search response:', response);
-      
+
       // Handle the response structure: {visitors: Array(1), count: 1}
       if (response && response.visitors && response.visitors.length > 0) {
         const visitor = response.visitors[0]; // Get the first visitor from the array
         setSearchedVisitor(visitor);
-        
+
         // Auto-fill the form with visitor data
         setNewLead({
           full_name: visitor.full_name || '',
@@ -595,7 +595,7 @@ const Leads = () => {
           notes: '',
           follow_up_date: ''
         });
-        
+
         showSuccess('Visitor found and form populated');
       } else {
         setSearchedVisitor(null);
@@ -617,39 +617,39 @@ const Leads = () => {
   const handleExportCSV = async () => {
     try {
       setIsExporting(true);
-      
+
       // Build query parameters from current filters
       const params = new URLSearchParams();
-      
+
       if (searchTerm) {
         params.append('search', searchTerm);
       }
-      
+
       if (dateFrom) {
         params.append('date_from', dateFrom);
       }
-      
+
       if (dateTo) {
         params.append('date_to', dateTo);
       }
-      
+
       // Use selectedCompanyId for platform admins, otherwise use companyId
       const effectiveCompanyId = isPlatformAdmin ? selectedCompanyId : companyId;
       if (effectiveCompanyId) {
         params.append('company_id', effectiveCompanyId);
       }
-      
+
       // Get JWT token
       const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-      
+
       // Create export URL (API_BASE_URL already includes /api)
       const exportUrl = `${API_BASE_URL}/leads/export/csv?${params.toString()}`;
-      
+
       // Create a temporary link element for download
       const link = document.createElement('a');
       link.href = exportUrl;
       link.setAttribute('download', `leads-export-${new Date().toISOString().split('T')[0]}.csv`);
-      
+
       // Set authorization header for the download
       // Since we can't set headers directly on link clicks, we'll use fetch
       const response = await fetch(exportUrl, {
@@ -659,24 +659,24 @@ const Leads = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Export failed: ${response.statusText}`);
       }
-      
+
       // Get the blob and create download link
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       link.href = url;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Clean up
       window.URL.revokeObjectURL(url);
-      
+
       showSuccess('CSV exported successfully');
     } catch (error) {
       console.error('Error exporting CSV:', error);
@@ -974,9 +974,9 @@ const Leads = () => {
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                           <span className={
-                            new Date(lead.follow_up_date).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) ? 
-                            'text-red-600 font-medium' : 
-                            'text-gray-900'
+                            new Date(lead.follow_up_date).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0) ?
+                              'text-red-600 font-medium' :
+                              'text-gray-900'
                           }>
                             {formatDate(lead.follow_up_date)}
                           </span>
@@ -1014,7 +1014,7 @@ const Leads = () => {
             </table>
           </div>
         )}
-        
+
         {/* Pagination */}
         {pagination.total_pages > 1 && (
           <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
